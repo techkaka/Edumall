@@ -20,6 +20,7 @@ export interface Product {
   type: string;
   stock?: number;
   description?: string;
+  features?: string[];
   specifications?: {
     isbn?: string;
     edition?: string;

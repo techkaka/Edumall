@@ -1,5 +1,6 @@
-// Enhanced React hooks for consuming the complete mock API service
+// Enhanced React hooks for consuming the complete API service
 import { useState, useEffect, useCallback } from 'react';
+import { realApi } from './realApi';
 import { mockApi } from './mockApi';
 import { 
   Product, 
@@ -50,43 +51,75 @@ export function useApi<T>(
 
 // Products hooks
 export function useProducts(params: SearchParams = {}) {
-  return useApi(
-    () => mockApi.getProducts(params),
-    [JSON.stringify(params)]
-  );
+  const [data, setData] = useState<Product[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState({
+    count: 0,
+    total: 0,
+    page: 1,
+    totalPages: 0
+  });
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await realApi.getProducts(params);
+      setData(response.data);
+      setPagination({
+        count: response.count || 0,
+        total: response.total || 0,
+        page: response.page || 1,
+        totalPages: response.totalPages || 0
+      });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
+      setError(errorMessage);
+      console.error('API Error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [JSON.stringify(params)]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  return { data, loading, error, refetch: fetchData, pagination };
 }
 
 export function useProduct(id: number) {
   return useApi(
-    () => mockApi.getProductById(id),
+    () => realApi.getProductById(id),
     [id]
   );
 }
 
 export function useFeaturedProducts(limit: number = 6) {
   return useApi(
-    () => mockApi.getFeaturedProducts(limit),
+    () => realApi.getFeaturedProducts(limit),
     [limit]
   );
 }
 
 export function useProductsByCategory(category: string, limit?: number) {
   return useApi(
-    () => mockApi.getProductsByCategory(category, limit),
+    () => realApi.getProductsByCategory(category, limit),
     [category, limit]
   );
 }
 
 export function useBestsellers(limit: number = 8) {
   return useApi(
-    () => mockApi.getBestsellers(limit),
+    () => realApi.getBestsellers(limit),
     [limit]
   );
 }
 
 // Categories hook
 export function useCategories() {
-  return useApi(() => mockApi.getCategories());
+  return useApi(() => realApi.getCategories());
 }
 
 // Testimonials hook
@@ -99,19 +132,19 @@ export function useTestimonials(limit?: number) {
 
 // Static data hooks
 export function useProductCategories() {
-  return useApi(() => mockApi.getProductCategories());
+  return useApi(() => realApi.getProductCategories());
 }
 
 export function useProductSubjects() {
-  return useApi(() => mockApi.getProductSubjects());
+  return useApi(() => realApi.getProductSubjects());
 }
 
 export function useProductPublishers() {
-  return useApi(() => mockApi.getProductPublishers());
+  return useApi(() => realApi.getProductPublishers());
 }
 
 export function usePriceRanges() {
-  return useApi(() => mockApi.getPriceRanges());
+  return useApi(() => realApi.getPriceRanges());
 }
 
 // Enhanced Cart hooks with full functionality

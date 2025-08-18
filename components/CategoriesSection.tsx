@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
 import {
@@ -19,15 +19,30 @@ export function CategoriesSection() {
   const [hoveredCategory, setHoveredCategory] = useState<
     string | null
   >(null);
+  const [isMobile, setIsMobile] = useState(false);
   const { data: categories, loading, error } = useCategories();
+
+  // Responsive logic to determine number of categories to show
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobile(window.innerWidth < 768); // md breakpoint
+    };
+
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
+
+  // Show 4 categories on mobile, 6 on desktop
+  const maxCategories = isMobile ? 4 : 6;
 
   const handleCategoryClick = (categoryId: string) => {
     const category = categories?.find(
       (cat) => cat.id === categoryId,
     );
-    if (category?.categories?.[0]) {
+    if (category?.title) {
       navigation.goToProducts({
-        category: category.categories[0],
+        category: category.title,
       });
     } else {
       navigation.goToCategories();
@@ -47,45 +62,48 @@ export function CategoriesSection() {
       strokeWidth: 2,
     };
 
-    switch (iconName) {
-      case "Stethoscope":
-        return <Stethoscope {...iconProps} />; // Clean style stethoscope for NEET
-      case "Settings":
-        return <Settings {...iconProps} />; // Engineering gear for JEE
-      case "Crown":
-        return <Crown {...iconProps} />; // Crown representing excellence for UPSC
-      default:
-        return <BookOpen {...iconProps} />;
+    // Use the actual icon from the category data if available
+    if (iconName && iconName !== '📚') {
+      // If it's a custom icon name, use the switch statement
+      switch (iconName) {
+        case "Stethoscope":
+          return <Stethoscope {...iconProps} />;
+        case "Settings":
+          return <Settings {...iconProps} />;
+        case "Crown":
+          return <Crown {...iconProps} />;
+        default:
+          return <BookOpen {...iconProps} />;
+      }
     }
+    
+    // Default to BookOpen icon
+    return <BookOpen {...iconProps} />;
   };
 
-  // Ultra-Vibrant Aqua theme background colors
+  // Ultra-Vibrant Aqua theme background colors - Force consistent blue theme
   const getCategoryBackground = (
     categoryId: string,
   ): string => {
-    switch (categoryId) {
-      case "neet":
-        return "bg-gradient-to-br from-lightBg to-white";
-      case "jee":
-        return "bg-gradient-to-br from-lightBg to-white";
-      case "upsc":
-        return "bg-gradient-to-br from-lightBg to-white";
-      default:
-        return "bg-gradient-to-br from-lightBg to-white";
-    }
+    // Force consistent blue background for all categories regardless of API data
+    return "bg-gradient-to-br from-lightBg to-white";
   };
 
   const getCategoryGradient = (categoryId: string): string => {
-    switch (categoryId) {
-      case "neet":
-        return "from-primary to-blue1";
-      case "jee":
-        return "from-blue1 to-blue2";
-      case "upsc":
-        return "from-blue2 to-blue3";
-      default:
-        return "from-primary to-blue1";
-    }
+    // Force consistent blue gradients regardless of API data
+    const categoryIndex = categories?.findIndex(cat => cat.id === categoryId) || 0;
+    
+    // Consistent blue theme gradients matching CategoriesPage
+    const blueGradients = [
+      "from-primary to-blue1",      // 1st category
+      "from-blue1 to-blue2",        // 2nd category  
+      "from-blue2 to-blue3",        // 3rd category
+      "from-blue3 to-blue4",        // 4th category (2nd row, 1st)
+      "from-primary to-blue2",      // 5th category (2nd row, 2nd)
+      "from-blue1 to-blue3",        // 6th category (2nd row, 3rd)
+    ];
+    
+    return blueGradients[categoryIndex % blueGradients.length] || "from-primary to-blue1";
   };
 
   if (loading) {
@@ -179,13 +197,13 @@ export function CategoriesSection() {
 
         {/* Ultra-Vibrant Aqua Categories Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 mb-8">
-          {categories.map((category, index) => (
+          {categories.slice(0, maxCategories).map((category, index) => (
             <Card
               key={category.id}
-              className={`group cursor-pointer transition-all duration-300 hover:shadow-xl transform hover:scale-105 border border-primary/20 overflow-hidden card-modern-bg ${
+              className={`group cursor-pointer transition-all duration-300 hover:shadow-xl transform hover:scale-105 border-2 border-primary/30 overflow-hidden card-modern-bg ${
                 hoveredCategory === category.id
-                  ? "shadow-xl scale-105 border-primary/40"
-                  : "shadow-md"
+                  ? "shadow-xl scale-105 border-primary/60 shadow-primary/20"
+                  : "shadow-md hover:border-primary/50"
               }`}
               onClick={() => handleCategoryClick(category.id)}
               onMouseEnter={() =>
@@ -198,11 +216,16 @@ export function CategoriesSection() {
                 <div
                   className={`relative p-6 ${getCategoryBackground(category.id)} overflow-hidden rounded-lg border-b border-primary/10`}
                 >
-                  {/* Subtle ultra-vibrant aqua background pattern */}
-                  <div className="absolute inset-0 opacity-5">
-                    <div className="absolute top-0 right-0 w-20 h-20 transform rotate-45 translate-x-10 -translate-y-10">
+                  {/* Vibrant ultra-vibrant aqua background pattern */}
+                  <div className="absolute inset-0 opacity-15">
+                    <div className="absolute top-0 right-0 w-24 h-24 transform rotate-45 translate-x-8 -translate-y-8">
                       <div
                         className={`w-full h-full bg-gradient-to-br ${getCategoryGradient(category.id)} rounded-lg`}
+                      ></div>
+                    </div>
+                    <div className="absolute bottom-0 left-0 w-16 h-16 transform -rotate-45 -translate-x-4 translate-y-4">
+                      <div
+                        className={`w-full h-full bg-gradient-to-br ${getCategoryGradient(category.id)} rounded-lg opacity-70`}
                       ></div>
                     </div>
                   </div>

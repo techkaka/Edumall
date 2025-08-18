@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Grid3X3, List, Star, Heart, ShoppingCart, SlidersHorizontal, Package } from 'lucide-react';
+import { Grid3X3, List, Star, Heart, ShoppingCart, SlidersHorizontal, Package, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
-// Input removed - search handled by header
 import { Badge } from '../ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Checkbox } from '../ui/checkbox';
@@ -10,140 +9,52 @@ import { Separator } from '../ui/separator';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { useRouter, useNavigation } from '../Router';
-import { projectId, publicAnonKey } from '../../utils/supabase/info';
-import {
-  NEET_KAKA_PRODUCTS,
-  PRODUCT_CATEGORIES,
-  PRODUCT_SUBJECTS,
-  PRODUCT_PUBLISHERS,
-  isBackendConfigured,
-  AUTHENTIC_COMBO_IMAGE
-} from '../../utils/productData';
+import { useProducts, useProductCategories, useProductSubjects, useProductPublishers, usePriceRanges } from '../../services/useApi';
+import { SearchParams, Product, PriceRange } from '../../services/types';
 
 export function ProductsPage() {
-  const { pageData } = useRouter();
+  const { params } = useRouter();
   const { goToProductDetail } = useNavigation();
   
-  const [allProducts, setAllProducts] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [dataSource, setDataSource] = useState('loading');
-  // Search is now handled by the header component - no local search needed
-  const [selectedCategory, setSelectedCategory] = useState(pageData?.category || 'All');
-  const [filterType, setFilterType] = useState(pageData?.type || null);
-  const [selectedSubject, setSelectedSubject] = useState('All');
-  const [selectedPublisher, setSelectedPublisher] = useState('All');
-  const [sortBy, setSortBy] = useState('popularity');
+  // API State Management
+  const [searchParams, setSearchParams] = useState<SearchParams>({
+    page: 1,
+    limit: 12,
+    filters: {
+      category: params.category && params.category !== 'All' ? params.category : undefined,
+      type: params.type || undefined,
+    },
+    sort: { sortBy: 'popularity' }
+  });
+
+  // UI State
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
   const [wishlist, setWishlist] = useState<number[]>([]);
 
-  // Fetch products from backend or use centralized data
+  // API Hooks
+  const { data: products, loading, error, refetch, pagination } = useProducts(searchParams);
+  const { data: categories } = useProductCategories();
+  const { data: subjects } = useProductSubjects();
+  const { data: publishers } = useProductPublishers();
+  const { data: priceRanges } = usePriceRanges();
+
+  // Update search params when URL params change
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // Check if backend is configured
-        if (!isBackendConfigured(projectId, publicAnonKey)) {
-          setAllProducts(NEET_KAKA_PRODUCTS);
-          setProducts(NEET_KAKA_PRODUCTS);
-          setDataSource('centralized');
-          setLoading(false);
-          return;
+    if (params.category || params.type) {
+      setSearchParams(prev => ({
+        ...prev,
+        page: 1, // Reset to first page when filters change
+        filters: {
+          ...prev.filters,
+          category: params.category && params.category !== 'All' ? params.category : undefined,
+          type: params.type || undefined,
         }
-
-        // Try to fetch from backend
-        const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fa655b79/products`, {
-          headers: {
-            'Authorization': `Bearer ${publicAnonKey}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`Backend returned ${response.status}`);
-        }
-
-        const result = await response.json();
-        if (result.success) {
-          setAllProducts(result.data);
-          setProducts(result.data);
-          setDataSource('backend');
-          // Products loaded successfully from backend
-        } else {
-          throw new Error(result.error || 'Failed to fetch products');
-        }
-      } catch (err) {
-        // Backend not available, falling back to centralized data
-        setAllProducts(NEET_KAKA_PRODUCTS);
-        setProducts(NEET_KAKA_PRODUCTS);
-        setDataSource('centralized');
-        setError(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProducts();
-  }, []);
-
-  // Update filters when pageData changes
-  useEffect(() => {
-    if (pageData?.category) {
-      setSelectedCategory(pageData.category);
+      }));
     }
-    if (pageData?.type) {
-      setFilterType(pageData.type);
-    }
-  }, [pageData]);
+  }, [params.category, params.type]);
 
-  // Filter products (search is handled by header component)
-  useEffect(() => {
-    if (!allProducts.length) return;
-
-    let filtered = allProducts;
-
-    // Category filter
-    if (selectedCategory !== 'All') {
-      filtered = filtered.filter(product => product.category === selectedCategory);
-    }
-
-    // Subject filter
-    if (selectedSubject !== 'All') {
-      filtered = filtered.filter(product => product.subject === selectedSubject);
-    }
-
-    // Publisher filter
-    if (selectedPublisher !== 'All') {
-      filtered = filtered.filter(product => product.publisher === selectedPublisher);
-    }
-
-    // Sort products
-    switch (sortBy) {
-      case 'price-low':
-        filtered.sort((a, b) => a.price - b.price);
-        break;
-      case 'price-high':
-        filtered.sort((a, b) => b.price - a.price);
-        break;
-      case 'rating':
-        filtered.sort((a, b) => b.rating - a.rating);
-        break;
-      case 'newest':
-        filtered.sort((a, b) => b.year - a.year);
-        break;
-      case 'popularity':
-      default:
-        filtered.sort((a, b) => b.reviews - a.reviews);
-        break;
-    }
-
-    setProducts(filtered);
-  }, [allProducts, selectedCategory, selectedSubject, selectedPublisher, sortBy]);
-
+  // Helper functions
   const toggleWishlist = (productId: number) => {
     setWishlist(prev => 
       prev.includes(productId) 
@@ -152,15 +63,45 @@ export function ProductsPage() {
     );
   };
 
+  const updateFilter = (key: keyof SearchParams['filters'], value: any) => {
+    setSearchParams(prev => ({
+      ...prev,
+      page: 1, // Reset to first page when filters change
+      filters: {
+        ...prev.filters,
+        [key]: value === 'All' ? undefined : value
+      }
+    }));
+  };
+
+  const updateSort = (sortBy: string) => {
+    setSearchParams(prev => ({
+      ...prev,
+      page: 1, // Reset to first page when sort changes
+      sort: { sortBy: sortBy as any }
+    }));
+  };
+
   const clearAllFilters = () => {
-    setSelectedCategory('All');
-    setSelectedSubject('All');
-    setSelectedPublisher('All');
-    setSortBy('popularity');
-    setFilterType(null);
+    setSearchParams(prev => ({
+      ...prev,
+      page: 1,
+      filters: {},
+      sort: { sortBy: 'popularity' }
+    }));
+  };
+
+  const changePage = (newPage: number) => {
+    setSearchParams(prev => ({
+      ...prev,
+      page: newPage
+    }));
   };
 
   const getPageTitle = () => {
+    const filterType = searchParams.filters?.type;
+    const selectedCategory = searchParams.filters?.category;
+    
     if (filterType) {
       switch (filterType) {
         case 'test-series':
@@ -175,71 +116,121 @@ export function ProductsPage() {
           return filterType.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
       }
     }
-    return selectedCategory === 'All' ? 'Complete Study Material Collection' : `${selectedCategory}`;
+    return selectedCategory ? `${selectedCategory}` : 'Complete Study Material Collection';
   };
+
+  // Calculate pagination info from API response
+  const totalProducts = pagination.total || 0;
+  const currentPage = pagination.page || 1;
+  const totalPages = pagination.totalPages || 0;
+  const hasNextPage = currentPage < totalPages;
+  const hasPrevPage = currentPage > 1;
+
+
 
   // Filter content component to avoid duplication - Mobile Optimized
   const FilterContent = () => (
     <div className="space-y-5">
       {/* Category Filter - Mobile Optimized */}
-      <div>
-        <label className="block text-base font-semibold text-gray-900 mb-4">Category</label>
-        <div className="grid grid-cols-1 gap-3">
-          {PRODUCT_CATEGORIES.map((category) => (
-            <label 
-              key={category} 
-              className={`flex items-center p-3 rounded-xl border-2 cursor-pointer transition-all ${
-                selectedCategory === category 
-                  ? 'border-primary bg-primary/5 text-primary' 
-                  : 'border-gray-200 bg-white hover:border-primary/30 hover:bg-primary/5'
-              }`}
-            >
-              <Checkbox
-                checked={selectedCategory === category}
-                onCheckedChange={() => setSelectedCategory(category)}
-                className="mr-3"
-              />
-              <span className="font-medium">{category}</span>
-            </label>
-          ))}
+      {categories && (
+        <div>
+          <label className="block text-base font-semibold text-gray-900 mb-4">Category</label>
+          <div className="grid grid-cols-1 gap-3">
+            {categories.map((category) => (
+              <label 
+                key={category} 
+                className={`flex items-center p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                  searchParams.filters?.category === category 
+                    ? 'border-primary bg-primary/5 text-primary' 
+                    : 'border-gray-200 bg-white hover:border-primary/30 hover:bg-primary/5'
+                }`}
+              >
+                <Checkbox
+                  checked={searchParams.filters?.category === category}
+                  onCheckedChange={() => updateFilter('category', category)}
+                  className="mr-3"
+                />
+                <span className="font-medium">{category}</span>
+              </label>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <Separator className="my-4" />
 
       {/* Subject Filter - Mobile Optimized */}
-      <div>
-        <label className="block text-base font-semibold text-gray-900 mb-4">Subject</label>
-        <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-          <SelectTrigger className="h-12 text-base border-2 border-primary/30 focus:border-primary">
-            <SelectValue placeholder="Select subject" />
-          </SelectTrigger>
-          <SelectContent>
-            {PRODUCT_SUBJECTS.map((subject) => (
-              <SelectItem key={subject} value={subject} className="py-3">
-                {subject}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {subjects && (
+        <div>
+          <label className="block text-base font-semibold text-gray-900 mb-4">Subject</label>
+          <Select 
+            value={searchParams.filters?.subject || 'All'} 
+            onValueChange={(value) => updateFilter('subject', value)}
+          >
+            <SelectTrigger className="h-12 text-base border-2 border-primary/30 focus:border-primary">
+              <SelectValue placeholder="Select subject" />
+            </SelectTrigger>
+            <SelectContent>
+              {subjects.map((subject) => (
+                <SelectItem key={subject} value={subject} className="py-3">
+                  {subject}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* Publisher Filter - Mobile Optimized */}
-      <div>
-        <label className="block text-base font-semibold text-gray-900 mb-4">Publisher</label>
-        <Select value={selectedPublisher} onValueChange={setSelectedPublisher}>
-          <SelectTrigger className="h-12 text-base border-2 border-primary/30 focus:border-primary">
-            <SelectValue placeholder="Select publisher" />
-          </SelectTrigger>
-          <SelectContent>
-            {PRODUCT_PUBLISHERS.map((publisher) => (
-              <SelectItem key={publisher} value={publisher} className="py-3">
-                {publisher}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {publishers && (
+        <div>
+          <label className="block text-base font-semibold text-gray-900 mb-4">Publisher</label>
+          <Select 
+            value={searchParams.filters?.publisher || 'All'} 
+            onValueChange={(value) => updateFilter('publisher', value)}
+          >
+            <SelectTrigger className="h-12 text-base border-2 border-primary/30 focus:border-primary">
+              <SelectValue placeholder="Select publisher" />
+            </SelectTrigger>
+            <SelectContent>
+              {publishers.map((publisher) => (
+                <SelectItem key={publisher} value={publisher} className="py-3">
+                  {publisher}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {/* Price Range Filter */}
+      {priceRanges && (
+        <div>
+          <label className="block text-base font-semibold text-gray-900 mb-4">Price Range</label>
+          <Select 
+            value={searchParams.filters?.priceRange ? `${searchParams.filters.priceRange.min}-${searchParams.filters.priceRange.max}` : 'All'} 
+            onValueChange={(value) => {
+              if (value === 'All') {
+                updateFilter('priceRange', undefined);
+              } else {
+                const range = priceRanges.find(r => `${r.min}-${r.max}` === value);
+                updateFilter('priceRange', range);
+              }
+            }}
+          >
+            <SelectTrigger className="h-12 text-base border-2 border-primary/30 focus:border-primary">
+              <SelectValue placeholder="Select price range" />
+            </SelectTrigger>
+            <SelectContent>
+              {priceRanges.map((range) => (
+                <SelectItem key={`${range.min}-${range.max}`} value={`${range.min}-${range.max}`} className="py-3">
+                  {range.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
     </div>
   );
 
@@ -268,7 +259,7 @@ export function ProductsPage() {
                 {getPageTitle()}
               </h1>
               <p className="text-gray-600">
-                Showing {products.length} of {allProducts.length} products
+                {loading ? 'Loading products...' : `Showing ${products?.length || 0} products`}
               </p>
             </div>
           </div>
@@ -322,7 +313,7 @@ export function ProductsPage() {
                     onClick={() => setShowFilters(false)}
                     className="w-full bg-gradient-to-r from-primary to-blue1 hover:from-blue1 hover:to-blue2 text-white py-3"
                   >
-                    Apply Filters ({products.length} products)
+                    Apply Filters ({products?.length || 0} products)
                   </Button>
                 </div>
               </div>
@@ -367,7 +358,10 @@ export function ProductsPage() {
 
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-600">Sort by:</span>
-                  <Select value={sortBy} onValueChange={setSortBy}>
+                  <Select 
+                    value={searchParams.sort?.sortBy || 'popularity'} 
+                    onValueChange={updateSort}
+                  >
                     <SelectTrigger className="w-40 border-primary/30">
                       <SelectValue />
                     </SelectTrigger>
@@ -384,12 +378,13 @@ export function ProductsPage() {
             </div>
 
             {/* Products Grid - Ultra-Vibrant Aqua Theme */}
-            {products.length > 0 ? (
-              <div className={viewMode === 'grid' 
-                ? "grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6" 
-                : "space-y-4"
-              }>
-                {products.map((product) => (
+            {products && products.length > 0 ? (
+              <>
+                <div className={viewMode === 'grid' 
+                  ? "grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6" 
+                  : "space-y-4"
+                }>
+                  {products.map((product) => (
                   <Card 
                     key={product.id}
                     className={`group hover:shadow-xl transition-all duration-300 border border-primary/20 shadow-md card-modern-bg cursor-pointer transform hover:scale-105 overflow-hidden ${
@@ -485,8 +480,58 @@ export function ProductsPage() {
                       </div>
                     </CardContent>
                   </Card>
-                ))}
-              </div>
+                  ))}
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="mt-8 flex justify-center items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => changePage(currentPage - 1)}
+                      disabled={!hasPrevPage}
+                      className="border-primary/30 hover:bg-primary/10"
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-1" />
+                      Previous
+                    </Button>
+                    
+                    <div className="flex items-center space-x-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+                        if (pageNum > totalPages) return null;
+                        
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => changePage(pageNum)}
+                            className={currentPage === pageNum 
+                              ? "bg-gradient-to-r from-primary to-blue1" 
+                              : "border-primary/30 hover:bg-primary/10"
+                            }
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => changePage(currentPage + 1)}
+                      disabled={!hasNextPage}
+                      className="border-primary/30 hover:bg-primary/10"
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="text-center py-12">
                 <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />

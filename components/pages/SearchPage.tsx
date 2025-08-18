@@ -28,7 +28,7 @@ import { useRouter, useNavigation } from '../Router';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 
 export function SearchPage() {
-  const { pageData } = useRouter();
+  const { params } = useRouter();
   const navigation = useNavigation();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
@@ -46,7 +46,7 @@ export function SearchPage() {
     availability: [] as string[]
   });
 
-  const searchQuery = pageData?.query || '';
+  const searchQuery = params.query || '';
 
   const searchResults = [
     {

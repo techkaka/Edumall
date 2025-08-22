@@ -116,11 +116,12 @@ export const RouterProvider: React.FC<RouterProviderProps> = ({ children }) => {
   // Navigation function
   const navigate = (page: string, newParams: Record<string, string> = {}) => {
     let path = page;
+    const paramsToSet = { ...newParams };
     
     // Handle special page routing
     if (page === 'product-detail' && newParams.id) {
       path = `products/${newParams.id}`;
-      delete newParams.id; // Remove from query params since it's in the path
+      // Keep the id in params for the component to access
     }
     
     // Build query string
@@ -133,7 +134,7 @@ export const RouterProvider: React.FC<RouterProviderProps> = ({ children }) => {
     // Update URL and state
     window.location.hash = url;
     setCurrentPage(page);
-    setParams(newParams);
+    setParams(paramsToSet);
   };
 
   // Helper navigation methods
@@ -148,7 +149,7 @@ export const RouterProvider: React.FC<RouterProviderProps> = ({ children }) => {
   const goToAccount = () => navigate('account');
   
   const goToSearch = (query?: string) => {
-    const searchParams = query ? { q: query } : {};
+    const searchParams: Record<string, string> = query ? { q: query } : {};
     navigate('search', searchParams);
   };
   

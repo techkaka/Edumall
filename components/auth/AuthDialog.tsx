@@ -106,25 +106,27 @@ export function AuthDialog({ isOpen, onClose, initialMode = 'login' }: AuthDialo
       return;
     }
 
-    if (mode === 'signup' && step === 'otp') {
-      // For signup, go to details step after OTP verification
-      setStep('details');
-      setSuccess('Mobile number verified! Please complete your profile.');
-      return;
-    }
-
-    // For login, proceed with authentication
-    const success = mode === 'login' 
-      ? await login(mobile, otp)
-      : await signup(mobile, name, otp);
-
-    if (success) {
-      setSuccess('Authentication successful!');
-      setTimeout(() => {
-        onClose();
-      }, 1500);
-    } else {
-      setError('Invalid OTP. Please try again.');
+    try {
+      if (mode === 'login') {
+        // For login, proceed with authentication
+        const success = await login(mobile, otp);
+        
+        if (success) {
+          setSuccess('Login successful!');
+          setTimeout(() => {
+            onClose();
+          }, 1500);
+        } else {
+          setError('Invalid OTP. Please try again.');
+        }
+      } else {
+        // For signup, go to details step after OTP verification
+        setStep('details');
+        setSuccess('Mobile number verified! Please complete your profile.');
+      }
+    } catch (error: any) {
+      console.error('OTP verification error:', error);
+      setError(error.message || 'OTP verification failed. Please try again.');
     }
   };
 
@@ -142,14 +144,19 @@ export function AuthDialog({ isOpen, onClose, initialMode = 'login' }: AuthDialo
       return;
     }
 
-    const success = await signup(mobile, name.trim(), otp);
-    if (success) {
-      setSuccess('Account created successfully!');
-      setTimeout(() => {
-        onClose();
-      }, 1500);
-    } else {
-      setError('Failed to create account. Please try again.');
+    try {
+      const success = await signup(mobile, name.trim(), otp);
+      if (success) {
+        setSuccess('Account created successfully!');
+        setTimeout(() => {
+          onClose();
+        }, 1500);
+      } else {
+        setError('Failed to create account. Please try again.');
+      }
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      setError(error.message || 'Failed to create account. Please try again.');
     }
   };
 
@@ -350,7 +357,7 @@ export function AuthDialog({ isOpen, onClose, initialMode = 'login' }: AuthDialo
                 disabled={isLoading || otp.length !== 6}
                 className="w-full"
               >
-                {isLoading ? 'Verifying...' : 'Verify OTP'}
+                {isLoading ? 'Verifying...' : mode === 'login' ? 'Login' : 'Continue'}
               </Button>
             </div>
           )}

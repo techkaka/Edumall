@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigation } from './Router';
@@ -29,148 +29,90 @@ const heroImages = [
 ];
 
 export function HeroSection() {
-  const navigation = useNavigation();
+  // Test basic useState first
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
-  const [imageLoaded, setImageLoaded] = useState<Record<number, boolean>>({});
+  
+  // Test navigation hook
+  let navigation;
+  try {
+    navigation = useNavigation();
+  } catch (error) {
+    console.error('Navigation hook error:', error);
+    // Provide fallback navigation
+    navigation = {
+      goToProducts: () => console.log('Navigation not available')
+    };
+  }
 
-  // Auto-play functionality
+  // Simple auto-play functionality
   useEffect(() => {
-    if (!isAutoPlaying) return;
-
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % heroImages.length);
-    }, 5000); // Slower transition for better viewing
+    }, 5000);
 
     return () => clearInterval(interval);
-  }, [isAutoPlaying]);
+  }, []);
 
   // Handle image click
   const handleImageClick = () => {
-    navigation.goToProducts({ category: 'Featured Combos' });
+    if (navigation) {
+      navigation.goToProducts({ category: 'Featured Combos' });
+    }
   };
 
   // Navigation functions
-  const goToSlide = (index: number) => {
-    setCurrentSlide(index);
-    setIsAutoPlaying(false);
-    // Resume auto-play after user interaction
-    setTimeout(() => setIsAutoPlaying(true), 10000);
-  };
-
   const nextSlide = () => {
-    goToSlide((currentSlide + 1) % heroImages.length);
+    setCurrentSlide((currentSlide + 1) % heroImages.length);
   };
 
   const prevSlide = () => {
-    goToSlide(currentSlide === 0 ? heroImages.length - 1 : currentSlide - 1);
-  };
-
-  // Handle image load
-  const handleImageLoad = (imageId: number) => {
-    setImageLoaded(prev => ({ ...prev, [imageId]: true }));
-  };
-
-  // Touch/swipe support for mobile
-  const [touchStart, setTouchStart] = useState<number>(0);
-  const [touchEnd, setTouchEnd] = useState<number>(0);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-
-  const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > 50;
-    const isRightSwipe = distance < -50;
-
-    if (isLeftSwipe) nextSlide();
-    if (isRightSwipe) prevSlide();
+    setCurrentSlide(currentSlide === 0 ? heroImages.length - 1 : currentSlide - 1);
   };
 
   return (
     <section className="relative overflow-hidden">
       <div className="container mx-auto px-4 py-2 lg:py-4">
         <div className="relative max-w-6xl mx-auto">
-          
-          {/* Pure Image Carousel - Absolutely No Text */}
-          <div 
-            className="pure-hero-carousel"
-            onClick={handleImageClick}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            role="button"
-            tabIndex={0}
-            aria-label="View study materials - Click to shop"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                handleImageClick();
-              }
-            }}
-          >
-            {/* Clean Image Container - Zero Overlays */}
+          {/* Hero Carousel */}
+          <div className="pure-hero-carousel">
             <div className="zero-text-container">
-              
-              {/* Current Image - Full Clean Display */}
+              {/* Current Image */}
               <ImageWithFallback
                 src={heroImages[currentSlide].src}
                 alt={heroImages[currentSlide].alt}
-                className={`w-full h-full object-contain transition-all duration-1000 ${
-                  imageLoaded[heroImages[currentSlide].id] ? 'opacity-100' : 'opacity-0'
-                }`}
-                onLoad={() => handleImageLoad(heroImages[currentSlide].id)}
+                className="w-full h-full object-cover cursor-pointer transition-transform duration-500 hover:scale-105"
+                onClick={handleImageClick}
               />
-
-              {/* Clean Loading State */}
-              {!imageLoaded[heroImages[currentSlide].id] && (
-                <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 animate-pulse"></div>
-              )}
-
-              {/* Invisible Navigation Arrows - Desktop Only, No Text */}
-              <div className="hidden lg:flex">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    prevSlide();
-                  }}
-                  className="text-free-arrow prev"
-                  aria-label="Previous"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
-
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    nextSlide();
-                  }}
-                  className="text-free-arrow next"
-                  aria-label="Next"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* ULTRA-SUBTLE: Barely visible navigation dots */}
-          <div className="pure-nav-dots">
-            {heroImages.map((_, index) => (
+              
+              {/* Navigation Arrows */}
               <button
-                key={index}
-                onClick={() => goToSlide(index)}
-                className={`pure-nav-dot ${index === currentSlide ? 'active' : ''}`}
-                aria-label={`Image ${index + 1}`}
-              />
-            ))}
+                onClick={prevSlide}
+                className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-primary p-2 rounded-full shadow-lg transition-all duration-200 hover:scale-110"
+                aria-label="Previous slide"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              
+              <button
+                onClick={nextSlide}
+                className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-primary p-2 rounded-full shadow-lg transition-all duration-200 hover:scale-110"
+                aria-label="Next slide"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {/* Navigation Dots */}
+            <div className="pure-nav-dots">
+              {heroImages.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentSlide(index)}
+                  className={`pure-nav-dot ${index === currentSlide ? 'active' : ''}`}
+                  aria-label={`Go to slide ${index + 1}`}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </div>

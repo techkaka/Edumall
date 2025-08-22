@@ -5,104 +5,19 @@ import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { initQuickCart } from './utils/quickCartLoader';
 
-// Enhanced lazy loading with simple fallback
-const createLazyComponent = (
-  importFn: () => Promise<{ [key: string]: React.ComponentType<any> }>,
-  componentName: string
-) => {
-  return lazy(() =>
-    importFn()
-      .then(module => ({ 
-        default: module[componentName] || module.default || (() => (
-          <div className="p-8 text-center bg-white rounded-lg border border-primary/20 shadow-md m-4">
-            <div className="text-red-600 mb-4">⚠️ Component Error</div>
-            <p className="text-gray-600 mb-4">Failed to load {componentName}</p>
-            <button 
-              onClick={() => window.location.reload()} 
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-600"
-            >
-              Reload Page
-            </button>
-          </div>
-        ))
-      }))
-      .catch(() => ({
-        default: () => (
-          <div className="p-8 text-center bg-white rounded-lg border border-primary/20 shadow-md m-4">
-            <div className="text-amber-600 mb-4">🔄 Loading Error</div>
-            <p className="text-gray-600 mb-4">Could not load {componentName}</p>
-            <button 
-              onClick={() => window.location.reload()} 
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-600"
-            >
-              Reload Page
-            </button>
-          </div>
-        )
-      }))
-  );
-};
-
-// Lazy-loaded components
-const HomePage = createLazyComponent(
-  () => import('./components/pages/HomePage'),
-  'HomePage'
-);
-
-const ProductsPage = createLazyComponent(
-  () => import('./components/pages/ProductsPage'),
-  'ProductsPage'
-);
-
-const ProductDetailPage = createLazyComponent(
-  () => import('./components/pages/ProductDetailPage'),
-  'ProductDetailPage'
-);
-
-const CartPage = createLazyComponent(
-  () => import('./components/pages/CartPage'),
-  'CartPage'
-);
-
-const CheckoutPage = createLazyComponent(
-  () => import('./components/pages/CheckoutPage'),
-  'CheckoutPage'
-);
-
-const AccountPage = createLazyComponent(
-  () => import('./components/pages/AccountPage'),
-  'AccountPage'
-);
-
-const WishlistPage = createLazyComponent(
-  () => import('./components/pages/WishlistPage'),
-  'WishlistPage'
-);
-
-const SearchPage = createLazyComponent(
-  () => import('./components/pages/SearchPage'),
-  'SearchPage'
-);
-
-const OrderTrackingPage = createLazyComponent(
-  () => import('./components/pages/OrderTrackingPage'),
-  'OrderTrackingPage'
-);
-
-const CategoriesPage = createLazyComponent(
-  () => import('./components/pages/CategoriesPage'),
-  'CategoriesPage'
-);
-
-const AboutPage = createLazyComponent(
-  () => import('./components/pages/AboutPage'),
-  'AboutPage'
-);
-
-const ContactPage = createLazyComponent(
-  () => import('./components/pages/ContactPage'),
-  'ContactPage'
-);
+// Simple lazy loading without complex error handling
+const HomePage = lazy(() => import('./components/pages/HomePage').then(module => ({ default: module.HomePage })));
+const ProductsPage = lazy(() => import('./components/pages/ProductsPage').then(module => ({ default: module.ProductsPage })));
+const ProductDetailPage = lazy(() => import('./components/pages/ProductDetailPage').then(module => ({ default: module.ProductDetailPage })));
+const CartPage = lazy(() => import('./components/pages/CartPage').then(module => ({ default: module.CartPage })));
+const CheckoutPage = lazy(() => import('./components/pages/CheckoutPage').then(module => ({ default: module.CheckoutPage })));
+const AccountPage = lazy(() => import('./components/pages/AccountPage').then(module => ({ default: module.AccountPage })));
+const WishlistPage = lazy(() => import('./components/pages/WishlistPage').then(module => ({ default: module.WishlistPage })));
+const SearchPage = lazy(() => import('./components/pages/SearchPage').then(module => ({ default: module.SearchPage })));
+const OrderTrackingPage = lazy(() => import('./components/pages/OrderTrackingPage').then(module => ({ default: module.OrderTrackingPage })));
+const CategoriesPage = lazy(() => import('./components/pages/CategoriesPage').then(module => ({ default: module.CategoriesPage })));
+const AboutPage = lazy(() => import('./components/pages/AboutPage').then(module => ({ default: module.AboutPage })));
+const ContactPage = lazy(() => import('./components/pages/ContactPage').then(module => ({ default: module.ContactPage })));
 
 // Loading component
 const PageLoader: React.FC = () => {
@@ -132,6 +47,7 @@ const PageLoader: React.FC = () => {
 interface ErrorBoundaryState {
   hasError: boolean;
   error?: Error;
+  errorInfo?: React.ErrorInfo;
 }
 
 class ErrorBoundary extends React.Component<{children: React.ReactNode}, ErrorBoundaryState> {
@@ -141,21 +57,42 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, ErrorBo
   }
 
   static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
+    console.error('Error Boundary caught error:', error);
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Error Boundary caught error:', error, errorInfo);
+    console.error('Error Boundary caught error:', error);
+    console.error('Error info:', errorInfo);
+    this.setState({ errorInfo });
   }
 
   render(): React.ReactNode {
-    if (this.state.hasError && this.state.error) {
+    if (this.state.hasError) {
       return (
         <div className="min-h-screen modern-gradient-bg flex items-center justify-center">
           <div className="text-center p-8 max-w-lg mx-4">
             <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 border border-white/50 shadow-xl">
               <div className="text-2xl font-bold text-gray-900 mb-4">Something went wrong</div>
               <p className="text-gray-600 mb-6">Please try refreshing the page.</p>
+              
+              {/* Debug information in development */}
+              {process.env.NODE_ENV === 'development' && this.state.error && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-left">
+                  <div className="text-sm font-semibold text-red-800 mb-2">Debug Information:</div>
+                  <div className="text-xs text-red-700 mb-2">
+                    <strong>Error:</strong> {this.state.error.message}
+                  </div>
+                  <div className="text-xs text-red-700 mb-2">
+                    <strong>Stack:</strong> {this.state.error.stack?.split('\n').slice(0, 3).join('\n')}
+                  </div>
+                  {this.state.errorInfo && (
+                    <div className="text-xs text-red-700">
+                      <strong>Component Stack:</strong> {this.state.errorInfo.componentStack?.split('\n').slice(0, 3).join('\n')}
+                    </div>
+                  )}
+                </div>
+              )}
               
               <div className="space-y-3">
                 <button 
@@ -195,37 +132,49 @@ const AppContent: React.FC = React.memo(() => {
 
   // Initialize sample cart data on app load (development only)
   useEffect(() => {
-    initQuickCart();
+    try {
+      console.log('🚀 Initializing EduMall app...');
+      initQuickCart();
+      console.log('✅ App initialization completed');
+    } catch (error) {
+      console.error('❌ Error during app initialization:', error);
+    }
   }, []);
 
   const renderPage = useCallback((): React.ReactElement => {
-    switch (currentPage) {
-      case 'home':
-        return <HomePage />;
-      case 'products':
-        return <ProductsPage />;
-      case 'product-detail':
-        return <ProductDetailPage />;
-      case 'categories':
-        return <CategoriesPage />;
-      case 'cart':
-        return <CartPage />;
-      case 'checkout':
-        return <CheckoutPage />;
-      case 'account':
-        return <AccountPage />;
-      case 'about':
-        return <AboutPage />;
-      case 'contact':
-        return <ContactPage />;
-      case 'search':
-        return <SearchPage />;
-      case 'wishlist':
-        return <WishlistPage />;
-      case 'order-tracking':
-        return <OrderTrackingPage />;
-      default:
-        return <HomePage />;
+    try {
+      console.log('📄 Rendering page:', currentPage);
+      switch (currentPage) {
+        case 'home':
+          return <HomePage />;
+        case 'products':
+          return <ProductsPage />;
+        case 'product-detail':
+          return <ProductDetailPage />;
+        case 'categories':
+          return <CategoriesPage />;
+        case 'cart':
+          return <CartPage />;
+        case 'checkout':
+          return <CheckoutPage />;
+        case 'account':
+          return <AccountPage />;
+        case 'about':
+          return <AboutPage />;
+        case 'contact':
+          return <ContactPage />;
+        case 'search':
+          return <SearchPage />;
+        case 'wishlist':
+          return <WishlistPage />;
+        case 'order-tracking':
+          return <OrderTrackingPage />;
+        default:
+          return <HomePage />;
+      }
+    } catch (error) {
+      console.error('❌ Error rendering page:', currentPage, error);
+      throw error; // Re-throw to be caught by Error Boundary
     }
   }, [currentPage]);
 

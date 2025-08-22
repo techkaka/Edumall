@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Star, Heart, ShoppingCart, Share2, ArrowLeft, Truck, Shield, RotateCcw, Award, BookOpen, Calendar, User, Building, CheckCircle, Send } from 'lucide-react';
+import { toast } from 'sonner';
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -11,7 +12,7 @@ import { Textarea } from '../ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { useRouter, useNavigation } from '../Router';
 import { useAuth } from '../auth/AuthContext';
-import { useProduct } from '../../services/useApi';
+import { useProduct, useCart } from '../../services/useApi';
 
 export function ProductDetailPage() {
   const { params } = useRouter();
@@ -23,6 +24,9 @@ export function ProductDetailPage() {
   
   // Fetch product data using real API - only if we have a valid ID
   const { data: product, loading, error } = useProduct(productId && productId > 0 ? productId : 0);
+  
+  // Cart functionality
+  const { addToCart, actionLoading } = useCart();
   
   // Local state
   const [quantity, setQuantity] = useState(1);
@@ -39,9 +43,24 @@ export function ProductDetailPage() {
   };
 
   // Handle add to cart
-  const handleAddToCart = () => {
-    // TODO: Implement add to cart functionality
-    console.log('Adding to cart:', product?.id, quantity);
+  const handleAddToCart = async () => {
+    if (!user) {
+      toast.error('Please login to add items to cart');
+      return;
+    }
+    
+    if (!product?.id) {
+      toast.error('No product ID available');
+      return;
+    }
+    
+    try {
+      await addToCart(product.id, quantity);
+      toast.success(`${product.title} added to cart!`);
+    } catch (error) {
+      console.error('Failed to add to cart:', error);
+      toast.error('Failed to add item to cart. Please try again.');
+    }
   };
 
   // Handle add to wishlist
@@ -268,10 +287,10 @@ export function ProductDetailPage() {
               <Button
                 className="w-full bg-gradient-to-r from-primary to-blue1 hover:from-blue1 hover:to-blue2 text-white py-3 text-lg font-bold"
                 onClick={handleAddToCart}
-                disabled={!product.stock || product.stock === 0}
+                disabled={!product.stock || product.stock === 0 || actionLoading === 'add'}
               >
                 <ShoppingCart className="h-5 w-5 mr-2" />
-                Add to Cart
+                {actionLoading === 'add' ? 'Adding...' : !user ? 'Login to Add' : 'Add to Cart'}
               </Button>
               
               <Button

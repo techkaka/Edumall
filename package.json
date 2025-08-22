@@ -68,7 +68,7 @@
     "react-hook-form": "^7.48.2",
     "react-resizable-panels": "^3.0.4",
     "recharts": "^2.8.0",
-    "sonner": "^1.4.0",
+    "sonner": "^1.7.4",
     "tailwind-merge": "^2.0.0",
     "vaul": "^1.1.2"
   },

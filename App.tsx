@@ -3,6 +3,7 @@ import { RouterProvider, useRouter } from './components/Router';
 import { AuthProvider } from './components/auth/AuthContext';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
+import { Toaster } from './components/ui/sonner';
 import { initQuickCart } from './utils/quickCartLoader';
 
 // Simple lazy loading without complex error handling
@@ -195,6 +196,7 @@ const AppContent: React.FC = React.memo(() => {
       </main>
       
       <Footer />
+      <Toaster />
     </div>
   );
 });

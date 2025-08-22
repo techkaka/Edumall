@@ -1,4 +1,4 @@
-import { mockApi } from '../services/mockApi';
+import { completeRealApi } from '../services/completeRealApi';
 
 /**
  * Cart Data Loader - Adds sample cart items for development/demo
@@ -31,7 +31,7 @@ export const addSampleCartItemsToLocalStorage = async (): Promise<void> => {
     
     for (const item of sampleCartProducts) {
       try {
-        const productResponse = await mockApi.getProductById(item.productId);
+        const productResponse = await completeRealApi.getProductById(item.productId);
         if (productResponse.success && productResponse.data) {
           cartItems.push({
             productId: item.productId,

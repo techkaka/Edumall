@@ -82,7 +82,7 @@ const sampleCartItems = [
 // Function to directly add cart items to localStorage
 export const loadSampleCartItems = (): boolean => {
   try {
-    // Store with exact key used by mockApi
+    // Store with exact key used by completeRealApi
     localStorage.setItem('edumall_cart', JSON.stringify(sampleCartItems));
     
     // Trigger storage event to update any cart listeners

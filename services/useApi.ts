@@ -1,7 +1,6 @@
 // Enhanced React hooks for consuming the complete API service
 import { useState, useEffect, useCallback } from 'react';
-import { realApi } from './realApi';
-import { mockApi } from './mockApi';
+import { completeRealApi } from './completeRealApi';
 import { 
   Product, 
   Category, 
@@ -65,7 +64,7 @@ export function useProducts(params: SearchParams = {}) {
     try {
       setLoading(true);
       setError(null);
-      const response = await realApi.getProducts(params);
+      const response = await completeRealApi.getProducts(params);
       setData(response.data);
       setPagination({
         count: response.count || 0,
@@ -91,60 +90,60 @@ export function useProducts(params: SearchParams = {}) {
 
 export function useProduct(id: number) {
   return useApi(
-    () => realApi.getProductById(id),
+    () => completeRealApi.getProductById(id),
     [id]
   );
 }
 
 export function useFeaturedProducts(limit: number = 6) {
   return useApi(
-    () => realApi.getFeaturedProducts(limit),
+    () => completeRealApi.getFeaturedProducts(limit),
     [limit]
   );
 }
 
 export function useProductsByCategory(category: string, limit?: number) {
   return useApi(
-    () => realApi.getProductsByCategory(category, limit),
+    () => completeRealApi.getProductsByCategory(category, limit),
     [category, limit]
   );
 }
 
 export function useBestsellers(limit: number = 8) {
   return useApi(
-    () => realApi.getBestsellers(limit),
+    () => completeRealApi.getBestsellers(limit),
     [limit]
   );
 }
 
 // Categories hook
 export function useCategories() {
-  return useApi(() => realApi.getCategories());
+  return useApi(() => completeRealApi.getCategories());
 }
 
 // Testimonials hook
 export function useTestimonials(limit?: number) {
   return useApi(
-    () => mockApi.getTestimonials(limit),
+    () => completeRealApi.getTestimonials(limit),
     [limit]
   );
 }
 
 // Static data hooks
 export function useProductCategories() {
-  return useApi(() => realApi.getProductCategories());
+  return useApi(() => completeRealApi.getProductCategories());
 }
 
 export function useProductSubjects() {
-  return useApi(() => realApi.getProductSubjects());
+  return useApi(() => completeRealApi.getProductSubjects());
 }
 
 export function useProductPublishers() {
-  return useApi(() => realApi.getProductPublishers());
+  return useApi(() => completeRealApi.getProductPublishers());
 }
 
 export function usePriceRanges() {
-  return useApi(() => realApi.getPriceRanges());
+  return useApi(() => completeRealApi.getPriceRanges());
 }
 
 // Enhanced Cart hooks with full functionality
@@ -158,7 +157,7 @@ export function useCart() {
     try {
       setLoading(true);
       setError(null);
-      const response = await mockApi.getCart();
+      const response = await completeRealApi.getCart();
       setCart(response.data);
     } catch (err) {
       const errorMessage = err instanceof ApiError ? err.message : 'Failed to fetch cart';
@@ -173,7 +172,7 @@ export function useCart() {
     try {
       setActionLoading('add');
       setError(null);
-      const response = await mockApi.addToCart(productId, quantity);
+      const response = await completeRealApi.addToCart(productId, quantity);
       setCart(response.data);
       return response;
     } catch (err) {
@@ -189,7 +188,7 @@ export function useCart() {
     try {
       setActionLoading('remove');
       setError(null);
-      const response = await mockApi.removeFromCart(productId);
+      const response = await completeRealApi.removeFromCart(productId);
       setCart(response.data);
       return response;
     } catch (err) {
@@ -205,7 +204,7 @@ export function useCart() {
     try {
       setActionLoading('update');
       setError(null);
-      const response = await mockApi.updateCartQuantity(productId, quantity);
+      const response = await completeRealApi.updateCartQuantity(productId, quantity);
       setCart(response.data);
       return response;
     } catch (err) {
@@ -221,7 +220,7 @@ export function useCart() {
     try {
       setActionLoading('clear');
       setError(null);
-      const response = await mockApi.clearCart();
+      const response = await completeRealApi.clearCart();
       setCart(response.data);
       return response;
     } catch (err) {
@@ -270,7 +269,7 @@ export function useWishlist() {
     try {
       setLoading(true);
       setError(null);
-      const response = await mockApi.getWishlist();
+      const response = await completeRealApi.getWishlist();
       setWishlist(response.data);
     } catch (err) {
       const errorMessage = err instanceof ApiError ? err.message : 'Failed to fetch wishlist';
@@ -285,7 +284,7 @@ export function useWishlist() {
     try {
       setActionLoading('add');
       setError(null);
-      const response = await mockApi.addToWishlist(productId);
+      const response = await completeRealApi.addToWishlist(productId);
       setWishlist(response.data);
       return response;
     } catch (err) {
@@ -301,7 +300,7 @@ export function useWishlist() {
     try {
       setActionLoading('remove');
       setError(null);
-      const response = await mockApi.removeFromWishlist(productId);
+      const response = await completeRealApi.removeFromWishlist(productId);
       setWishlist(response.data);
       return response;
     } catch (err) {
@@ -345,7 +344,7 @@ export function useWishlist() {
 
 // User management hooks
 export function useCurrentUser() {
-  return useApi(() => mockApi.getCurrentUser());
+  return useApi(() => completeRealApi.getCurrentUser());
 }
 
 export function useUserUpdate() {
@@ -356,7 +355,7 @@ export function useUserUpdate() {
     try {
       setLoading(true);
       setError(null);
-      const response = await mockApi.updateUser(userData);
+      const response = await completeRealApi.updateUser(userData);
       return response;
     } catch (err) {
       const errorMessage = err instanceof ApiError ? err.message : 'Failed to update user';
@@ -372,7 +371,7 @@ export function useUserUpdate() {
 
 // Address management hooks
 export function useAddresses() {
-  return useApi(() => mockApi.getUserAddresses());
+  return useApi(() => completeRealApi.getUserAddresses());
 }
 
 export function useAddressManagement() {
@@ -383,7 +382,7 @@ export function useAddressManagement() {
     try {
       setLoading(true);
       setError(null);
-      const response = await mockApi.addAddress(address);
+      const response = await completeRealApi.addAddress(address);
       return response;
     } catch (err) {
       const errorMessage = err instanceof ApiError ? err.message : 'Failed to add address';
@@ -398,7 +397,7 @@ export function useAddressManagement() {
     try {
       setLoading(true);
       setError(null);
-      const response = await mockApi.updateAddress(index, address);
+      const response = await completeRealApi.updateAddress(index, address);
       return response;
     } catch (err) {
       const errorMessage = err instanceof ApiError ? err.message : 'Failed to update address';
@@ -413,7 +412,7 @@ export function useAddressManagement() {
     try {
       setLoading(true);
       setError(null);
-      const response = await mockApi.deleteAddress(index);
+      const response = await completeRealApi.deleteAddress(index);
       return response;
     } catch (err) {
       const errorMessage = err instanceof ApiError ? err.message : 'Failed to delete address';
@@ -429,12 +428,12 @@ export function useAddressManagement() {
 
 // Order management hooks
 export function useOrders() {
-  return useApi(() => mockApi.getUserOrders());
+  return useApi(() => completeRealApi.getUserOrders());
 }
 
 export function useOrder(orderId: string) {
   return useApi(
-    () => mockApi.getOrderById(orderId),
+    () => completeRealApi.getOrderById(orderId),
     [orderId]
   );
 }
@@ -452,7 +451,7 @@ export function useOrderCreation() {
     try {
       setLoading(true);
       setError(null);
-      const response = await mockApi.createOrder(orderData);
+      const response = await completeRealApi.createOrder(orderData);
       return response;
     } catch (err) {
       const errorMessage = err instanceof ApiError ? err.message : 'Failed to create order';
@@ -475,7 +474,7 @@ export function useCouponValidation() {
     try {
       setLoading(true);
       setError(null);
-      const response = await mockApi.validateCoupon(couponCode, cartTotal);
+      const response = await completeRealApi.validateCoupon(couponCode, cartTotal);
       return response;
     } catch (err) {
       const errorMessage = err instanceof ApiError ? err.message : 'Failed to validate coupon';

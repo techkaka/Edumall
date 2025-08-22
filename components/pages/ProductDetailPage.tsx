@@ -19,10 +19,10 @@ export function ProductDetailPage() {
   const { user } = useAuth();
   
   // Get product ID from URL params
-  const productId = parseInt(params.id || '0');
+  const productId = params.id ? parseInt(params.id) : null;
   
-  // Fetch product data using real API
-  const { data: product, loading, error } = useProduct(productId);
+  // Fetch product data using real API - only if we have a valid ID
+  const { data: product, loading, error } = useProduct(productId && productId > 0 ? productId : 0);
   
   // Local state
   const [quantity, setQuantity] = useState(1);
@@ -79,7 +79,7 @@ export function ProductDetailPage() {
   }
 
   // Error state
-  if (error || !product) {
+  if (error || !product || !productId || productId <= 0) {
     return (
       <div className="min-h-screen modern-gradient-bg flex items-center justify-center">
         <div className="text-center">
@@ -88,7 +88,7 @@ export function ProductDetailPage() {
             Product not found
           </h3>
           <p className="text-gray-600 mb-4">
-            {error || 'The product you are looking for does not exist.'}
+            {!productId || productId <= 0 ? 'Invalid product ID.' : (error || 'The product you are looking for does not exist.')}
           </p>
           <Button
             onClick={() => goToProducts()}
@@ -225,7 +225,7 @@ export function ProductDetailPage() {
               <div className="flex items-center gap-2 text-sm">
                 <CheckCircle className="h-4 w-4 text-green-500" />
                 <span className="text-green-600 font-medium">
-                  {product.stock > 0 ? `In Stock (${product.stock} available)` : 'Out of Stock'}
+                  {product.stock && product.stock > 0 ? `In Stock (${product.stock} available)` : 'Out of Stock'}
                 </span>
               </div>
             </div>
@@ -248,14 +248,14 @@ export function ProductDetailPage() {
                   value={quantity}
                   onChange={(e) => handleQuantityChange(parseInt(e.target.value) || 1)}
                   min="1"
-                  max={product.stock}
+                  max={product.stock || 1}
                   className="w-20 text-center border-primary/30"
                 />
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => handleQuantityChange(quantity + 1)}
-                  disabled={quantity >= product.stock}
+                  disabled={quantity >= (product.stock || 1)}
                   className="w-10 h-10 p-0 border-primary/30"
                 >
                   +
@@ -268,7 +268,7 @@ export function ProductDetailPage() {
               <Button
                 className="w-full bg-gradient-to-r from-primary to-blue1 hover:from-blue1 hover:to-blue2 text-white py-3 text-lg font-bold"
                 onClick={handleAddToCart}
-                disabled={product.stock === 0}
+                disabled={!product.stock || product.stock === 0}
               >
                 <ShoppingCart className="h-5 w-5 mr-2" />
                 Add to Cart
@@ -277,7 +277,7 @@ export function ProductDetailPage() {
               <Button
                 variant="outline"
                 className="w-full border-primary text-primary hover:bg-primary hover:text-white py-3"
-                disabled={product.stock === 0}
+                disabled={!product.stock || product.stock === 0}
               >
                 Buy Now
               </Button>

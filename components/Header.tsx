@@ -24,13 +24,14 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { useNavigation, useRouter } from './Router';
 import { useAuth } from './auth/AuthContext';
 import { AuthDialog } from './auth/AuthDialog';
+import { useCart, useWishlist } from '../services/useApi';
 
 export function Header() {
   const navigation = useNavigation();
   const { currentPage } = useRouter();
   const { user, logout, isAuthenticated } = useAuth();
-  const [cartItems, setCartItems] = useState(0);
-  const [wishlistItems, setWishlistItems] = useState(0);
+  const { cart, totalItems } = useCart();
+  const { wishlist } = useWishlist();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState('');
   const [dropdownTimeout, setDropdownTimeout] = useState<NodeJS.Timeout | null>(null);
@@ -48,40 +49,7 @@ export function Header() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Update cart and wishlist counts from localStorage
-  useEffect(() => {
-    const updateCounts = () => {
-      try {
-        const cartData = localStorage.getItem('edumall_cart');
-        const wishlistData = localStorage.getItem('edumall_wishlist');
-        
-        const cart = cartData ? JSON.parse(cartData) : [];
-        const wishlist = wishlistData ? JSON.parse(wishlistData) : [];
-        
-        const cartCount = cart.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0);
-        setCartItems(cartCount);
-        setWishlistItems(wishlist.length);
-      } catch (error) {
-        console.error('Error reading localStorage counts:', error);
-        setCartItems(0);
-        setWishlistItems(0);
-      }
-    };
 
-    // Update counts on mount
-    updateCounts();
-
-    // Listen for storage events (when localStorage changes)
-    window.addEventListener('storage', updateCounts);
-    
-    // Also check periodically for changes (in case of same-tab updates)
-    const interval = setInterval(updateCounts, 1000);
-
-    return () => {
-      window.removeEventListener('storage', updateCounts);
-      clearInterval(interval);
-    };
-  }, []);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -433,9 +401,9 @@ export function Header() {
                 >
                   <Heart className="h-5 w-5 group-hover:scale-110 transition-transform" />
                   <span className="hidden lg:inline ml-2">Wishlist</span>
-                  {wishlistItems > 0 && (
+                  {wishlist && wishlist.length > 0 && (
                     <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 text-xs bg-red-500 text-white rounded-full flex items-center justify-center">
-                      {wishlistItems}
+                      {wishlist.length}
                     </Badge>
                   )}
                 </Button>
@@ -449,9 +417,9 @@ export function Header() {
                 >
                   <ShoppingCart className="h-5 w-5 group-hover:scale-110 transition-transform" />
                   <span className="hidden sm:inline ml-2">Cart</span>
-                  {cartItems > 0 && (
+                  {totalItems > 0 && (
                     <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs bg-primary text-white rounded-full">
-                      {cartItems}
+                      {totalItems}
                     </Badge>
                   )}
                 </Button>
@@ -612,9 +580,9 @@ export function Header() {
                     >
                       <Heart className="h-5 w-5 mr-3 text-red-500" />
                       Wishlist
-                      {wishlistItems > 0 && (
+                      {wishlist && wishlist.length > 0 && (
                         <Badge className="ml-auto h-5 w-5 p-0 text-xs bg-red-500 text-white rounded-full flex items-center justify-center">
-                          {wishlistItems}
+                          {wishlist.length}
                         </Badge>
                       )}
                     </Button>

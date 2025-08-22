@@ -529,25 +529,146 @@ export const completeRealApi = {
     const response = await fetch(`${API_BASE_URL}/addresses/`, {
       headers: getAuthHeaders()
     });
-    return await handleResponse<Address[]>(response);
+    const result = await handleResponse<any>(response);
+    
+    // Handle different response structures
+    let addresses: Address[] = [];
+    
+    if (Array.isArray(result.data)) {
+      // If response is already an array
+      addresses = result.data.map((address: any) => ({
+        fullName: address.full_name,
+        addressLine1: address.address_line1,
+        addressLine2: address.address_line2,
+        city: address.city,
+        state: address.state,
+        pincode: address.pincode,
+        phone: address.phone
+      }));
+    } else if (result.data && typeof result.data === 'object') {
+      // If response is a single address object
+      const address = result.data;
+      addresses = [{
+        fullName: address.full_name,
+        addressLine1: address.address_line1,
+        addressLine2: address.address_line2,
+        city: address.city,
+        state: address.state,
+        pincode: address.pincode,
+        phone: address.phone
+      }];
+    }
+    
+    return {
+      ...result,
+      data: addresses
+    };
   },
 
   async addAddress(address: Address): Promise<ApiResponse<Address[]>> {
+    // Convert camelCase to snake_case for backend compatibility
+    const backendAddress = {
+      full_name: address.fullName,
+      address_line1: address.addressLine1,
+      address_line2: address.addressLine2 || '',
+      city: address.city,
+      state: address.state,
+      pincode: address.pincode,
+      phone: address.phone
+    };
+
     const response = await fetch(`${API_BASE_URL}/addresses/create/`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify(address)
+      body: JSON.stringify(backendAddress)
     });
-    return await handleResponse<Address[]>(response);
+    const result = await handleResponse<any>(response);
+    
+    // Handle different response structures
+    let addresses: Address[] = [];
+    
+    if (Array.isArray(result.data)) {
+      // If response is already an array
+      addresses = result.data.map((address: any) => ({
+        fullName: address.full_name,
+        addressLine1: address.address_line1,
+        addressLine2: address.address_line2,
+        city: address.city,
+        state: address.state,
+        pincode: address.pincode,
+        phone: address.phone
+      }));
+    } else if (result.data && typeof result.data === 'object') {
+      // If response is a single address object
+      const address = result.data;
+      addresses = [{
+        fullName: address.full_name,
+        addressLine1: address.address_line1,
+        addressLine2: address.address_line2,
+        city: address.city,
+        state: address.state,
+        pincode: address.pincode,
+        phone: address.phone
+      }];
+    }
+    
+    return {
+      ...result,
+      data: addresses
+    };
   },
 
   async updateAddress(index: number, address: Address): Promise<ApiResponse<Address[]>> {
+    // Convert camelCase to snake_case for backend compatibility
+    const backendAddress = {
+      full_name: address.fullName,
+      address_line1: address.addressLine1,
+      address_line2: address.addressLine2 || '',
+      city: address.city,
+      state: address.state,
+      pincode: address.pincode,
+      phone: address.phone
+    };
+
     const response = await fetch(`${API_BASE_URL}/addresses/${index}/`, {
       method: 'PUT',
       headers: getAuthHeaders(),
-      body: JSON.stringify(address)
+      body: JSON.stringify(backendAddress)
     });
-    return await handleResponse<Address[]>(response);
+    const result = await handleResponse<any>(response);
+    
+    // Handle different response structures
+    let addresses: Address[] = [];
+    
+    if (Array.isArray(result.data)) {
+      // If response is already an array
+      addresses = result.data.map((address: any) => ({
+        fullName: address.full_name,
+        addressLine1: address.address_line1,
+        addressLine2: address.address_line2,
+        city: address.city,
+        state: address.state,
+        pincode: address.pincode,
+        phone: address.phone
+      }));
+    } else if (result.data && typeof result.data === 'object') {
+      // If response is a single address object
+      const address = result.data;
+      addresses = [{
+        fullName: address.full_name,
+        addressLine1: address.address_line1,
+        addressLine2: address.address_line2,
+        city: address.city,
+        state: address.state,
+        pincode: address.pincode,
+        phone: address.phone
+      }];
+    }
+    
+    return {
+      ...result,
+      data: addresses
+    };
   },
 
   async deleteAddress(index: number): Promise<ApiResponse<Address[]>> {

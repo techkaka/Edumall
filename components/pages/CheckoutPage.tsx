@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { 
   CreditCard,
   MapPin,
@@ -26,8 +27,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Separator } from '../ui/separator';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { useNavigation } from '../Router';
-import { useCheckout } from '../../services/useApi';
+import { useCheckout, useAddressManagement } from '../../services/useApi';
 import { Address } from '../../services/types';
+import { AuthDialog } from '../auth/AuthDialog';
 
 interface AddressFormData {
   fullName: string;
@@ -94,10 +96,14 @@ export function CheckoutPage() {
     refetchAddresses
   } = useCheckout();
 
+  const { addAddress, loading: addressLoading, error: addressError } = useAddressManagement();
+
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [addressForm, setAddressForm] = useState<AddressFormData>(initialAddressForm);
   const [addressFormError, setAddressFormError] = useState<string>('');
   const [currentStep, setCurrentStep] = useState<'address' | 'payment' | 'review'>('address');
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
+  const [pendingAddress, setPendingAddress] = useState<Address | null>(null);
 
   // Remove automatic redirect - let users decide when to leave checkout
   // The cart will load via useCheckout hook, no need for premature redirects
@@ -108,6 +114,45 @@ export function CheckoutPage() {
       setSelectedAddress(addresses[0]);
     }
   }, [addresses, selectedAddress, setSelectedAddress]);
+
+  // Handle pending address after authentication
+  useEffect(() => {
+    const handlePendingAddress = async () => {
+      if (pendingAddress && localStorage.getItem('auth_token')) {
+        try {
+          console.log('Processing pending address after authentication');
+          const result = await addAddress(pendingAddress);
+          console.log('Pending address added successfully:', result);
+          
+          // Set the newly added address as selected
+          setSelectedAddress(pendingAddress);
+          setAddressForm(initialAddressForm);
+          setShowAddressForm(false);
+          
+          // Refresh the addresses list
+          refetchAddresses();
+          
+          // Show success toast
+          toast.success('Address added successfully!', {
+            description: 'Your shipping address has been saved.',
+            duration: 3000,
+          });
+          
+          // Clear pending address
+          setPendingAddress(null);
+        } catch (error) {
+          console.error('Failed to add pending address:', error);
+          toast.error('Failed to add address', {
+            description: 'Please try again.',
+            duration: 5000,
+          });
+          setPendingAddress(null);
+        }
+      }
+    };
+
+    handlePendingAddress();
+  }, [pendingAddress, addAddress, refetchAddresses]);
 
   const handleAddressFormChange = (field: keyof AddressFormData, value: string) => {
     setAddressForm(prev => ({ ...prev, [field]: value }));
@@ -138,7 +183,9 @@ export function CheckoutPage() {
     return true;
   };
 
-  const handleAddAddress = () => {
+  const handleAddAddress = async () => {
+    console.log('handleAddAddress called');
+    
     if (validateAddressForm()) {
       const newAddress: Address = {
         fullName: addressForm.fullName.trim(),
@@ -150,12 +197,49 @@ export function CheckoutPage() {
         phone: addressForm.phone.trim()
       };
 
-      // For demo, we'll just add to local state
-      // In real app, this would call addAddress API
-      setSelectedAddress(newAddress);
-      setAddressForm(initialAddressForm);
-      setShowAddressForm(false);
-      refetchAddresses();
+      console.log('Adding address:', newAddress);
+      console.log('Auth token:', localStorage.getItem('auth_token'));
+
+      try {
+        // Check if user is authenticated
+        const authToken = localStorage.getItem('auth_token');
+        
+        if (!authToken) {
+          // Show authentication dialog and store pending address
+          console.log('No auth token found, showing auth dialog');
+          setPendingAddress(newAddress);
+          setShowAuthDialog(true);
+          return;
+        }
+        
+        // Call the API to add the address
+        const result = await addAddress(newAddress);
+        console.log('Address added successfully:', result);
+        
+        // Set the newly added address as selected
+        setSelectedAddress(newAddress);
+        setAddressForm(initialAddressForm);
+        setShowAddressForm(false);
+        
+        // Refresh the addresses list
+        refetchAddresses();
+        
+        // Show success toast
+        toast.success('Address added successfully!', {
+          description: 'Your shipping address has been saved.',
+          duration: 3000,
+        });
+      } catch (error) {
+        // Error is handled by the useAddressManagement hook
+        console.error('Failed to add address:', error);
+        
+        // Show error toast with more details
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        toast.error('Failed to add address', {
+          description: `Error: ${errorMessage}. Please check if you're logged in and try again.`,
+          duration: 5000,
+        });
+      }
     }
   };
 
@@ -167,7 +251,7 @@ export function CheckoutPage() {
       await clearCart();
       
       // Navigate to order success page with order ID
-      navigation.goToOrderTracking(order.data.id);
+      navigation.goToOrderTracking();
     } catch (error) {
       // Error is already handled by useCheckout hook via orderError state
     }
@@ -415,17 +499,33 @@ export function CheckoutPage() {
                             </div>
                           )}
 
+                          {addressError && (
+                            <div className="text-red-600 text-sm flex items-center bg-red-50 p-3 rounded-lg border border-red-200">
+                              <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+                              {addressError}
+                            </div>
+                          )}
+
                           <div className="flex flex-col sm:flex-row gap-3 pt-4">
                             <Button
                               onClick={handleAddAddress}
-                              className="flex-1 bg-gradient-to-r from-primary to-blue1 hover:from-blue1 hover:to-blue2 text-white shadow-lg transform hover:scale-105 h-12"
+                              disabled={addressLoading}
+                              className="flex-1 bg-gradient-to-r from-primary to-blue1 hover:from-blue1 hover:to-blue2 text-white shadow-lg transform hover:scale-105 h-12 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              Add Address
+                              {addressLoading ? (
+                                <>
+                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                                  Adding...
+                                </>
+                              ) : (
+                                'Add Address'
+                              )}
                             </Button>
                             <Button
                               variant="outline"
                               onClick={() => setShowAddressForm(false)}
-                              className="border-gray-300 text-gray-600 hover:bg-gray-50 h-12 sm:w-24"
+                              disabled={addressLoading}
+                              className="border-gray-300 text-gray-600 hover:bg-gray-50 h-12 sm:w-24 disabled:opacity-50"
                             >
                               Cancel
                             </Button>
@@ -451,14 +551,140 @@ export function CheckoutPage() {
                       <MapPin className="h-8 w-8 text-primary" />
                     </div>
                     <p className="text-gray-600 mb-6 text-lg">No addresses found. Please add a shipping address.</p>
-                    <Button 
-                      onClick={() => setShowAddressForm(true)} 
-                      className="bg-gradient-to-r from-primary to-blue1 hover:from-blue1 hover:to-blue2 text-white shadow-lg transform hover:scale-105"
-                      size="lg"
-                    >
-                      <Plus className="h-5 w-5 mr-2" />
-                      Add Address
-                    </Button>
+                    <Dialog open={showAddressForm} onOpenChange={setShowAddressForm}>
+                      <DialogTrigger asChild>
+                        <Button 
+                          className="bg-gradient-to-r from-primary to-blue1 hover:from-blue1 hover:to-blue2 text-white shadow-lg transform hover:scale-105"
+                          size="lg"
+                        >
+                          <Plus className="h-5 w-5 mr-2" />
+                          Add Address
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-[95vw] w-full max-h-[90vh] overflow-y-auto sm:max-w-md">
+                        <DialogHeader>
+                          <DialogTitle className="text-lg font-bold text-gray-900">Add New Address</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 px-1">
+                          <div>
+                            <Label htmlFor="fullName" className="text-gray-700 font-medium">Full Name *</Label>
+                            <Input
+                              id="fullName"
+                              value={addressForm.fullName}
+                              onChange={(e) => handleAddressFormChange('fullName', e.target.value)}
+                              placeholder="Enter full name"
+                              className="border-primary/30 focus:border-primary h-12"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="addressLine1" className="text-gray-700 font-medium">Address Line 1 *</Label>
+                            <Input
+                              id="addressLine1"
+                              value={addressForm.addressLine1}
+                              onChange={(e) => handleAddressFormChange('addressLine1', e.target.value)}
+                              placeholder="House/Flat no, Building, Street"
+                              className="border-primary/30 focus:border-primary h-12"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="addressLine2" className="text-gray-700 font-medium">Address Line 2</Label>
+                            <Input
+                              id="addressLine2"
+                              value={addressForm.addressLine2}
+                              onChange={(e) => handleAddressFormChange('addressLine2', e.target.value)}
+                              placeholder="Area, Landmark (Optional)"
+                              className="border-primary/30 focus:border-primary h-12"
+                            />
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="city" className="text-gray-700 font-medium">City *</Label>
+                              <Input
+                                id="city"
+                                value={addressForm.city}
+                                onChange={(e) => handleAddressFormChange('city', e.target.value)}
+                                placeholder="City"
+                                className="border-primary/30 focus:border-primary h-12"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="pincode" className="text-gray-700 font-medium">Pincode *</Label>
+                              <Input
+                                id="pincode"
+                                value={addressForm.pincode}
+                                onChange={(e) => handleAddressFormChange('pincode', e.target.value)}
+                                placeholder="123456"
+                                maxLength={6}
+                                className="border-primary/30 focus:border-primary h-12"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <Label htmlFor="state" className="text-gray-700 font-medium">State *</Label>
+                            <select
+                              id="state"
+                              value={addressForm.state}
+                              onChange={(e) => handleAddressFormChange('state', e.target.value)}
+                              className="w-full h-12 px-3 border-2 border-primary/30 rounded-lg focus:outline-none focus:border-primary transition-colors bg-white"
+                            >
+                              <option value="">Select State</option>
+                              {indianStates.map(state => (
+                                <option key={state} value={state}>{state}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <Label htmlFor="phone" className="text-gray-700 font-medium">Phone Number *</Label>
+                            <Input
+                              id="phone"
+                              value={addressForm.phone}
+                              onChange={(e) => handleAddressFormChange('phone', e.target.value)}
+                              placeholder="+91-9876543210"
+                              className="border-primary/30 focus:border-primary h-12"
+                            />
+                          </div>
+
+                          {addressFormError && (
+                            <div className="text-red-600 text-sm flex items-center bg-red-50 p-3 rounded-lg border border-red-200">
+                              <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+                              {addressFormError}
+                            </div>
+                          )}
+
+                          {addressError && (
+                            <div className="text-red-600 text-sm flex items-center bg-red-50 p-3 rounded-lg border border-red-200">
+                              <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+                              {addressError}
+                            </div>
+                          )}
+
+                          <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                            <Button
+                              onClick={handleAddAddress}
+                              disabled={addressLoading}
+                              className="flex-1 bg-gradient-to-r from-primary to-blue1 hover:from-blue1 hover:to-blue2 text-white shadow-lg transform hover:scale-105 h-12 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {addressLoading ? (
+                                <>
+                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                                  Adding...
+                                </>
+                              ) : (
+                                'Add Address'
+                              )}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={() => setShowAddressForm(false)}
+                              disabled={addressLoading}
+                              className="border-gray-300 text-gray-600 hover:bg-gray-50 h-12 sm:w-24 disabled:opacity-50"
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 )}
               </CardContent>
@@ -729,6 +955,16 @@ export function CheckoutPage() {
           </div>
         </div>
       </div>
+      
+      {/* Authentication Dialog */}
+      <AuthDialog 
+        isOpen={showAuthDialog} 
+        onClose={() => {
+          setShowAuthDialog(false);
+          setPendingAddress(null);
+        }}
+        initialMode="login"
+      />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, MapPin, Phone, Calendar, User, Eye, Download, MessageCircle, CheckCircle2, Package } from 'lucide-react';
+import { Search, MapPin, Phone, Calendar, User, Eye, Download, MessageCircle, CheckCircle2, Package, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
@@ -7,39 +7,143 @@ import { Badge } from '../ui/badge';
 import { Progress } from '../ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { useNavigation, useRouter } from '../Router';
-import { TRACKING_DATA } from './order-tracking/constants';
+import { useOrders, useOrder } from '../../services/useApi';
 import { getStatusColor, getStatusIcon } from './order-tracking/utils';
 import { OrderTimeline } from './order-tracking/OrderTimeline';
 import { OrderItems } from './order-tracking/OrderItems';
+import { Order } from '../../services/types';
 
 export function OrderTrackingPage() {
   const navigation = useNavigation();
-  const { pageData } = useRouter();
+  const { params } = useRouter();
   const [searchOrderId, setSearchOrderId] = useState('');
-  const [selectedOrder, setSelectedOrder] = useState('ORD-2024-001');
+  const [selectedOrderId, setSelectedOrderId] = useState<string>('');
   const [showOrderSuccess, setShowOrderSuccess] = useState(false);
 
-  const recentOrders = Object.values(TRACKING_DATA);
-  const currentOrder = TRACKING_DATA[selectedOrder as keyof typeof TRACKING_DATA];
+  // Fetch all user orders
+  const { data: orders, loading: ordersLoading, error: ordersError } = useOrders();
+  
+  // Fetch specific order details if selected
+  const { data: currentOrder, loading: orderLoading, error: orderError } = useOrder(selectedOrderId);
+
+  // Set initial selected order
+  useEffect(() => {
+    if (orders && orders.length > 0 && !selectedOrderId) {
+      setSelectedOrderId(orders[0].order_number || orders[0].id);
+    }
+  }, [orders, selectedOrderId]);
 
   // Check if user came from checkout with a new order
   useEffect(() => {
-    if (pageData?.orderId) {
+    if (params?.orderId) {
       setShowOrderSuccess(true);
-      setSelectedOrder(pageData.orderId);
+      setSelectedOrderId(params.orderId);
       // Hide success message after 10 seconds
       const timer = setTimeout(() => {
         setShowOrderSuccess(false);
       }, 10000);
       return () => clearTimeout(timer);
     }
-  }, [pageData]);
+  }, [params]);
 
   const handleSearchOrder = () => {
-    if (searchOrderId && TRACKING_DATA[searchOrderId as keyof typeof TRACKING_DATA]) {
-      setSelectedOrder(searchOrderId);
+    if (searchOrderId && orders?.some(order => 
+      order.order_number === searchOrderId || order.id === searchOrderId
+    )) {
+      setSelectedOrderId(searchOrderId);
     }
   };
+
+  // Helper function to get order progress percentage
+  const getOrderProgress = (order: Order) => {
+    const statusProgress = {
+      'pending': 10,
+      'confirmed': 25,
+      'processing': 50,
+      'shipped': 75,
+      'delivered': 100,
+      'cancelled': 0
+    };
+    return statusProgress[order.status] || 0;
+  };
+
+  // Helper function to get estimated delivery date
+  const getEstimatedDelivery = (order: Order) => {
+    const orderDate = new Date(order.createdAt);
+    const estimatedDate = new Date(orderDate.getTime() + (7 * 24 * 60 * 60 * 1000)); // 7 days from order date
+    return estimatedDate.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+  };
+
+  // Helper function to get current location based on status
+  const getCurrentLocation = (order: Order) => {
+    const locationMap = {
+      'pending': 'Order Processing Center',
+      'confirmed': 'Warehouse',
+      'processing': 'Packaging Center',
+      'shipped': 'In Transit',
+      'delivered': 'Delivered',
+      'cancelled': 'Cancelled'
+    };
+    return locationMap[order.status] || 'Processing';
+  };
+
+  // Loading state
+  if (ordersLoading) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFB] flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Loading Orders</h2>
+          <p className="text-gray-600">Fetching your order history...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (ordersError) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFB] flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 text-5xl mb-4">⚠️</div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Unable to load orders</h2>
+          <p className="text-gray-600 mb-4">{ordersError}</p>
+          <Button 
+            onClick={() => window.location.reload()} 
+            variant="outline"
+            className="border-primary text-primary hover:bg-primary hover:text-white"
+          >
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // No orders state
+  if (!orders || orders.length === 0) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFB]">
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <div className="text-gray-400 text-5xl mb-4">📦</div>
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">No Orders Found</h1>
+            <p className="text-xl text-gray-600 mb-8">You haven't placed any orders yet.</p>
+            <Button 
+              onClick={() => navigation.goToHome()}
+              className="bg-primary hover:bg-blue1 text-white"
+            >
+              Start Shopping
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FAFB]">
@@ -54,7 +158,7 @@ export function OrderTrackingPage() {
             </div>
             <h2 className="text-2xl font-bold text-green-800 mb-2">Order Placed Successfully!</h2>
             <p className="text-green-700 mb-4">
-              Your order {pageData?.orderId || selectedOrder} has been confirmed. We'll start processing it right away.
+              Your order {params?.orderId || selectedOrderId} has been confirmed. We'll start processing it right away.
             </p>
             <div className="flex items-center justify-center gap-4">
               <Button 
@@ -111,7 +215,7 @@ export function OrderTrackingPage() {
 
           {/* Current Order Tab */}
           <TabsContent value="current" className="space-y-8">
-            {currentOrder && (
+            {currentOrder && !orderLoading ? (
               <>
                 {/* Order Overview */}
                 <Card className="shadow-lg border-0">
@@ -120,11 +224,11 @@ export function OrderTrackingPage() {
                       <div>
                         <CardTitle className="text-2xl">Order {currentOrder.id}</CardTitle>
                         <CardDescription>
-                          Placed on {currentOrder.orderDate} • {currentOrder.items.length} items
+                          Placed on {new Date(currentOrder.createdAt).toLocaleDateString()} • {currentOrder.items.length} items
                         </CardDescription>
                       </div>
                       <Badge className={getStatusColor(currentOrder.status)}>
-                        {currentOrder.status}
+                        {currentOrder.status.charAt(0).toUpperCase() + currentOrder.status.slice(1)}
                       </Badge>
                     </div>
                   </CardHeader>
@@ -135,12 +239,12 @@ export function OrderTrackingPage() {
                         <div className="mb-6">
                           <div className="flex items-center justify-between mb-2">
                             <span className="font-medium">Delivery Progress</span>
-                            <span className="text-sm text-gray-600">{currentOrder.progress}%</span>
+                            <span className="text-sm text-gray-600">{getOrderProgress(currentOrder)}%</span>
                           </div>
-                          <Progress value={currentOrder.progress} className="h-3" />
+                          <Progress value={getOrderProgress(currentOrder)} className="h-3" />
                           <div className="flex items-center justify-between mt-2 text-sm text-gray-600">
                             <span>Order Placed</span>
-                            <span>{currentOrder.status === 'Delivered' ? 'Delivered' : 'In Progress'}</span>
+                            <span>{currentOrder.status === 'delivered' ? 'Delivered' : 'In Progress'}</span>
                           </div>
                         </div>
 
@@ -151,7 +255,13 @@ export function OrderTrackingPage() {
                               <MapPin className="h-4 w-4 mr-2 text-primary" />
                               Delivery Address
                             </h4>
-                            <p className="text-gray-600 text-sm">{currentOrder.deliveryAddress}</p>
+                            <p className="text-gray-600 text-sm">
+                              {currentOrder.shippingAddress.fullName}<br />
+                              {currentOrder.shippingAddress.addressLine1}<br />
+                              {currentOrder.shippingAddress.addressLine2 && `${currentOrder.shippingAddress.addressLine2}<br />`}
+                              {currentOrder.shippingAddress.city}, {currentOrder.shippingAddress.state} - {currentOrder.shippingAddress.pincode}<br />
+                              Phone: {currentOrder.shippingAddress.phone}
+                            </p>
                           </div>
                           <div>
                             <h4 className="font-semibold mb-3 flex items-center">
@@ -159,42 +269,39 @@ export function OrderTrackingPage() {
                               Delivery Timeline
                             </h4>
                             <p className="text-sm text-gray-600">
-                              Estimated: {currentOrder.estimatedDelivery}
+                              Estimated: {getEstimatedDelivery(currentOrder)}
                             </p>
-                            {currentOrder.actualDelivery && (
+                            {currentOrder.status === 'delivered' && (
                               <p className="text-sm text-green-600 font-medium">
-                                Delivered: {currentOrder.actualDelivery}
+                                Delivered: {new Date(currentOrder.updatedAt).toLocaleDateString()}
                               </p>
                             )}
                           </div>
                         </div>
 
-                        {/* Delivery Person Info */}
-                        {currentOrder.deliveryPerson && (
-                          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                            <h4 className="font-semibold mb-2 flex items-center">
-                              <User className="h-4 w-4 mr-2 text-blue-600" />
-                              Delivery Partner
-                            </h4>
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="font-medium">{currentOrder.deliveryPerson.name}</p>
-                                <p className="text-sm text-gray-600">Vehicle: {currentOrder.deliveryPerson.vehicle}</p>
-                              </div>
-                              <Button variant="outline" size="sm">
-                                <Phone className="h-4 w-4 mr-2" />
-                                {currentOrder.deliveryPerson.phone}
-                              </Button>
+                        {/* Payment Information */}
+                        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                          <h4 className="font-semibold mb-2 flex items-center">
+                            <User className="h-4 w-4 mr-2 text-blue-600" />
+                            Payment Details
+                          </h4>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium">Method: {currentOrder.paymentMethod}</p>
+                              <p className="text-sm text-gray-600">Status: {currentOrder.paymentStatus}</p>
                             </div>
+                            <Badge className={currentOrder.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
+                              {currentOrder.paymentStatus.toUpperCase()}
+                            </Badge>
                           </div>
-                        )}
+                        </div>
                       </div>
 
                       <div>
                         <h4 className="font-semibold mb-4">Current Location</h4>
                         <div className="p-4 bg-gradient-to-br from-primary/10 to-blue-50 border border-primary/20 rounded-lg mb-6">
-                          <p className="font-medium text-primary">{currentOrder.currentLocation}</p>
-                          <p className="text-sm text-gray-600 mt-1">Last updated: 2 hours ago</p>
+                          <p className="font-medium text-primary">{getCurrentLocation(currentOrder)}</p>
+                          <p className="text-sm text-gray-600 mt-1">Last updated: {new Date(currentOrder.updatedAt).toLocaleString()}</p>
                         </div>
 
                         <div className="space-y-3">
@@ -217,10 +324,34 @@ export function OrderTrackingPage() {
                 </Card>
 
                 <div className="grid lg:grid-cols-2 gap-8">
-                  <OrderTimeline timeline={currentOrder.timeline} />
+                  <OrderTimeline order={currentOrder} />
                   <OrderItems items={currentOrder.items} total={currentOrder.total} />
                 </div>
               </>
+            ) : orderLoading ? (
+              <div className="text-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+                <p className="text-gray-600">Loading order details...</p>
+              </div>
+            ) : orderError ? (
+              <div className="text-center py-12">
+                <div className="text-red-500 text-5xl mb-4">⚠️</div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">Unable to load order details</h3>
+                <p className="text-gray-600 mb-4">{orderError}</p>
+                <Button 
+                  onClick={() => window.location.reload()} 
+                  variant="outline"
+                  className="border-primary text-primary hover:bg-primary hover:text-white"
+                >
+                  Try Again
+                </Button>
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <div className="text-gray-400 text-5xl mb-4">📦</div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">No order selected</h3>
+                <p className="text-gray-600">Please select an order from the history to view details.</p>
+              </div>
             )}
           </TabsContent>
 
@@ -233,11 +364,11 @@ export function OrderTrackingPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {recentOrders.map((order) => (
+                  {orders.map((order) => (
                     <div 
                       key={order.id} 
                       className="p-6 border rounded-lg hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => setSelectedOrder(order.id)}
+                      onClick={() => setSelectedOrderId(order.id)}
                     >
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center space-x-4">
@@ -246,11 +377,11 @@ export function OrderTrackingPage() {
                           </div>
                           <div>
                             <h3 className="font-semibold text-lg">{order.id}</h3>
-                            <p className="text-sm text-gray-600">Ordered on {order.orderDate}</p>
+                            <p className="text-sm text-gray-600">Ordered on {new Date(order.createdAt).toLocaleDateString()}</p>
                           </div>
                         </div>
                         <Badge className={getStatusColor(order.status)}>
-                          {order.status}
+                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                         </Badge>
                       </div>
                       

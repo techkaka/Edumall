@@ -695,21 +695,83 @@ export const completeRealApi = {
         coupon_code: orderData.couponCode
       })
     });
-    return await handleResponse<Order>(response);
+    const result = await handleResponse<any>(response);
+    
+    // Transform backend order data to frontend format
+    const order = result.data.order || result.data;
+    const transformedOrder = this.transformOrderData(order);
+    
+    return {
+      ...result,
+      data: transformedOrder
+    };
   },
 
   async getUserOrders(): Promise<ApiResponse<Order[]>> {
     const response = await fetch(`${API_BASE_URL}/orders/`, {
       headers: getAuthHeaders()
     });
-    return await handleResponse<Order[]>(response);
+    const result = await handleResponse<any[]>(response);
+    
+    // Transform backend orders data to frontend format
+    const transformedOrders = result.data.map(order => this.transformOrderData(order));
+    
+    return {
+      ...result,
+      data: transformedOrders
+    };
   },
 
   async getOrderById(orderId: string): Promise<ApiResponse<Order>> {
     const response = await fetch(`${API_BASE_URL}/orders/${orderId}/`, {
       headers: getAuthHeaders()
     });
-    return await handleResponse<Order>(response);
+    const result = await handleResponse<any>(response);
+    
+    // Transform backend order data to frontend format
+    const transformedOrder = this.transformOrderData(result.data);
+    
+    return {
+      ...result,
+      data: transformedOrder
+    };
+  },
+
+  // Helper method to transform backend order data to frontend format
+  transformOrderData(backendOrder: any): Order {
+    return {
+      id: backendOrder.id?.toString() || backendOrder.order_number,
+      order_number: backendOrder.order_number,
+      userId: backendOrder.user?.toString() || '1',
+      items: backendOrder.items?.map((item: any) => ({
+        id: item.id,
+        title: item.product.title,
+        author: item.product.author || 'Unknown Author',
+        price: parseFloat(item.price),
+        image: item.product.image_url || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400',
+        quantity: item.quantity
+      })) || [],
+      subtotal: parseFloat(backendOrder.total_amount) || 0,
+      discount: 0, // Backend doesn't provide this separately
+      shipping: 0, // Backend doesn't provide this separately
+      total: parseFloat(backendOrder.total_amount) || 0,
+      status: backendOrder.status || 'pending',
+      paymentMethod: 'Online Payment', // Backend doesn't store this
+      paymentStatus: 'paid', // Assume paid if order exists
+      createdAt: backendOrder.created_at,
+      updatedAt: backendOrder.updated_at,
+      estimatedDelivery: new Date(new Date(backendOrder.created_at).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      shippingAddress: {
+        fullName: backendOrder.shipping_name || '',
+        addressLine1: backendOrder.shipping_address || '',
+        addressLine2: '',
+        city: backendOrder.shipping_city || '',
+        state: backendOrder.shipping_state || '',
+        pincode: backendOrder.shipping_postal_code || '',
+        phone: backendOrder.shipping_phone || ''
+      },
+      couponCode: undefined
+    };
   },
 
   // ========== COUPON API ==========

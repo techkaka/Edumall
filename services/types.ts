@@ -110,10 +110,20 @@ export interface WishlistItem {
   addedAt: string;
 }
 
+export interface OrderItem {
+  id: number;
+  title: string;
+  author: string;
+  price: number;
+  image: string;
+  quantity: number;
+}
+
 export interface Order {
   id: string;
+  order_number?: string;
   userId: string;
-  items: CartItem[];
+  items: OrderItem[];
   subtotal: number;
   discount: number;
   shipping: number;

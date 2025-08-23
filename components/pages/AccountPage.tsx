@@ -28,7 +28,7 @@ import { Separator } from '../ui/separator';
 import { useNavigation } from '../Router';
 import { useAuth } from '../auth/AuthContext';
 import { ProtectedRoute } from '../auth/ProtectedRoute';
-import { useCurrentUser, useOrders, useAddresses, useWishlist } from '../../services/useApi';
+import { useCurrentUser, useOrders, useAddresses, useWishlist, useUserReviewsCount } from '../../services/useApi';
 import { Order, OrderItem, Address } from '../../services/types';
 
 function AuthenticatedAccountPage() {
@@ -42,6 +42,7 @@ function AuthenticatedAccountPage() {
   const { data: orders, loading: ordersLoading } = useOrders();
   const { data: addresses, loading: addressesLoading } = useAddresses();
   const { wishlist, count: wishlistCount, loading: wishlistLoading } = useWishlist();
+  const { data: reviewsCount, loading: reviewsCountLoading } = useUserReviewsCount();
   
   // Use real user data or fallback to auth context user
   const userProfile = {
@@ -49,7 +50,9 @@ function AuthenticatedAccountPage() {
     email: currentUser?.email || user?.email || '',
     phone: currentUser?.phone || user?.mobile || '',
     joinDate: currentUser?.createdAt || 'January 2024',
-    membershipTier: 'Gold'
+    membershipTier: currentUser?.membership_tier || 'bronze',
+    membershipPoints: currentUser?.membership_points || 0,
+    membershipJoinDate: currentUser?.membership_join_date || 'January 2024'
   };
 
   // Calculate real stats from API data
@@ -68,7 +71,7 @@ function AuthenticatedAccountPage() {
     },
     { 
       label: 'Reviews Written', 
-      value: '8', // This would come from a reviews API
+      value: reviewsCount?.toString() || '0', // Use real reviews count
       icon: Star, 
       color: 'text-yellow-500' 
     }
@@ -134,7 +137,7 @@ function AuthenticatedAccountPage() {
   };
 
   // Show loading state while data is being fetched
-  if (userLoading || ordersLoading || addressesLoading || wishlistLoading) {
+  if (userLoading || ordersLoading || addressesLoading || wishlistLoading || reviewsCountLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -161,12 +164,34 @@ function AuthenticatedAccountPage() {
               <h1 className="text-3xl font-bold mb-2">Welcome back, {userProfile.name}!</h1>
               <p className="text-blue-100 mb-4">Member since {userProfile.joinDate}</p>
               <div className="flex items-center space-x-4">
-                <Badge className="bg-yellow-500 text-yellow-900 hover:bg-yellow-400">
-                  Gold Member
+                <Badge className={`${
+                  userProfile.membershipTier === 'gold' ? 'bg-yellow-500 text-yellow-900 hover:bg-yellow-400' :
+                  userProfile.membershipTier === 'silver' ? 'bg-gray-400 text-gray-900 hover:bg-gray-300' :
+                  userProfile.membershipTier === 'platinum' ? 'bg-purple-500 text-purple-900 hover:bg-purple-400' :
+                  'bg-amber-600 text-amber-900 hover:bg-amber-500'
+                }`}>
+                  {userProfile.membershipTier.charAt(0).toUpperCase() + userProfile.membershipTier.slice(1)} Member
                 </Badge>
-                <span className="text-sm text-blue-100">
-                  550 points to Platinum
-                </span>
+                {userProfile.membershipTier === 'bronze' && (
+                  <span className="text-sm text-blue-100">
+                    Start shopping to earn points!
+                  </span>
+                )}
+                {userProfile.membershipTier === 'silver' && (
+                  <span className="text-sm text-blue-100">
+                    {500 - userProfile.membershipPoints} points to Gold
+                  </span>
+                )}
+                {userProfile.membershipTier === 'gold' && (
+                  <span className="text-sm text-blue-100">
+                    {1000 - userProfile.membershipPoints} points to Platinum
+                  </span>
+                )}
+                {userProfile.membershipTier === 'platinum' && (
+                  <span className="text-sm text-blue-100">
+                    You've reached the highest tier!
+                  </span>
+                )}
               </div>
             </div>
             <Button 

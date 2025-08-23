@@ -4,6 +4,7 @@ import {
   verifyOtp, 
   logout as logoutApi, 
   getUserProfile, 
+  updateName as updateNameApi,
   isAuthenticated as isAuthenticatedApi,
   getAuthToken,
   clearTokens,
@@ -22,8 +23,9 @@ interface User {
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (mobile: string, otp: string, firstName?: string, lastName?: string, email?: string) => Promise<boolean>;
+  login: (mobile: string, otp: string, firstName?: string, lastName?: string, email?: string) => Promise<{ success: boolean; needsName?: boolean }>;
   signup: (mobile: string, name: string, otp: string, email?: string) => Promise<boolean>;
+  updateName: (firstName: string, lastName?: string) => Promise<boolean>;
   logout: () => void;
   sendOtp: (mobile: string) => Promise<boolean>;
   isAuthenticated: boolean;
@@ -104,7 +106,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  const login = async (mobile: string, otp: string, firstName?: string, lastName?: string, email?: string): Promise<boolean> => {
+  const login = async (mobile: string, otp: string, firstName?: string, lastName?: string, email?: string): Promise<{ success: boolean; needsName?: boolean }> => {
     try {
       setIsLoading(true);
       
@@ -123,13 +125,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Store user data for backward compatibility
         localStorage.setItem('edumall_user', JSON.stringify(frontendUser));
         
-        return true;
+        return {
+          success: true,
+          needsName: response.needs_name
+        };
       } else {
-        return false;
+        return { success: false };
       }
     } catch (error) {
       console.error('Login error:', error);
-      return false;
+      return { success: false };
     } finally {
       setIsLoading(false);
     }
@@ -171,6 +176,26 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  const updateName = async (firstName: string, lastName: string = ''): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      
+      const updatedUser = await updateNameApi(firstName, lastName);
+      const frontendUser = convertBackendUser(updatedUser);
+      setUser(frontendUser);
+      
+      // Update stored user data
+      localStorage.setItem('edumall_user', JSON.stringify(frontendUser));
+      
+      return true;
+    } catch (error) {
+      console.error('Update name error:', error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const logout = async () => {
     try {
       await logoutApi();
@@ -187,6 +212,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isLoading,
     login,
     signup,
+    updateName,
     logout,
     sendOtp,
     isAuthenticated: !!user

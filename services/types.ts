@@ -157,6 +157,9 @@ export interface User {
   orders: string[]; // Array of order IDs
   wishlist: WishlistItem[];
   createdAt: string;
+  membership_tier?: string;
+  membership_points?: number;
+  membership_join_date?: string;
 }
 
 // API Error types

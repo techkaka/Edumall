@@ -774,6 +774,14 @@ export const completeRealApi = {
     };
   },
 
+  // ========== REVIEWS API ==========
+  async getUserReviewsCount(): Promise<ApiResponse<{ count: number }>> {
+    const response = await fetch(`${API_BASE_URL}/user/reviews/count/`, {
+      headers: getAuthHeaders()
+    });
+    return await handleResponse<{ count: number }>(response);
+  },
+
   // ========== COUPON API ==========
   async validateCoupon(couponCode: string, cartTotal: number): Promise<ApiResponse<{
     valid: boolean;

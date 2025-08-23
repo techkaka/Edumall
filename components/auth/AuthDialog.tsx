@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Alert, AlertDescription } from '../ui/alert';
 import { Badge } from '../ui/badge';
 import { useAuth } from './AuthContext';
+import { NameCollectionDialog } from './NameCollectionDialog';
 
 interface AuthDialogProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ export function AuthDialog({ isOpen, onClose, initialMode = 'login' }: AuthDialo
   const [timer, setTimer] = useState(0);
   const [canResend, setCanResend] = useState(false);
   const [showOtp, setShowOtp] = useState(false);
+  const [showNameDialog, setShowNameDialog] = useState(false);
 
   // Reset state when dialog opens/closes
   useEffect(() => {
@@ -40,6 +42,7 @@ export function AuthDialog({ isOpen, onClose, initialMode = 'login' }: AuthDialo
       setTimer(0);
       setCanResend(false);
       setShowOtp(false);
+      setShowNameDialog(false);
     }
   }, [isOpen, initialMode]);
 
@@ -111,13 +114,18 @@ export function AuthDialog({ isOpen, onClose, initialMode = 'login' }: AuthDialo
     try {
       if (mode === 'login') {
         // For login, proceed with authentication
-        const success = await login(mobile, otp);
+        const result = await login(mobile, otp);
         
-        if (success) {
-          setSuccess('Login successful!');
-          setTimeout(() => {
-            onClose();
-          }, 1500);
+        if (result.success) {
+          if (result.needsName) {
+            // Show name collection dialog for first-time users
+            setShowNameDialog(true);
+          } else {
+            setSuccess('Login successful!');
+            setTimeout(() => {
+              onClose();
+            }, 1500);
+          }
         } else {
           setError('Invalid OTP. Please try again.');
         }
@@ -144,6 +152,21 @@ export function AuthDialog({ isOpen, onClose, initialMode = 'login' }: AuthDialo
     if (name.trim().length < 2) {
       setError('Name must be at least 2 characters long');
       return;
+    }
+
+    // Check if name contains both first and last name (at least 2 words)
+    const nameParts = name.trim().split(' ').filter(part => part.length > 0);
+    if (nameParts.length < 2) {
+      setError('Please enter both your first name and last name');
+      return;
+    }
+
+    // Check if each part is at least 2 characters
+    for (let i = 0; i < nameParts.length; i++) {
+      if (nameParts[i].length < 2) {
+        setError('Each part of your name must be at least 2 characters long');
+        return;
+      }
     }
 
     try {
@@ -446,7 +469,7 @@ export function AuthDialog({ isOpen, onClose, initialMode = 'login' }: AuthDialo
 
               <div className="space-y-3">
                 <Label htmlFor="name" className="text-sm font-semibold text-gray-700">
-                  Full Name
+                  Full Name *
                 </Label>
                 <div className="relative">
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
@@ -457,10 +480,13 @@ export function AuthDialog({ isOpen, onClose, initialMode = 'login' }: AuthDialo
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Enter your full name"
+                    placeholder="Enter your first name and last name"
                     className="pl-12 py-3 border-2 border-gray-200 focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl text-lg"
                   />
                 </div>
+                <p className="text-xs text-gray-500">
+                  Please enter both your first name and last name (e.g., "John Doe")
+                </p>
               </div>
 
               <Button
@@ -514,6 +540,16 @@ export function AuthDialog({ isOpen, onClose, initialMode = 'login' }: AuthDialo
           </div>
         </div>
       </DialogContent>
+      
+      {/* Name Collection Dialog for First-Time Users */}
+      <NameCollectionDialog
+        isOpen={showNameDialog}
+        onClose={() => {
+          setShowNameDialog(false);
+          onClose();
+        }}
+        userMobile={mobile}
+      />
     </Dialog>
   );
 }

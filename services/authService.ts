@@ -25,6 +25,7 @@ export interface AuthTokens {
 export interface LoginResponse {
   success: boolean;
   message: string;
+  needs_name?: boolean;
   user: User;
   tokens: AuthTokens;
 }
@@ -213,6 +214,26 @@ export async function getUserProfile(): Promise<User> {
     return result.data.user;
   } catch (error) {
     console.error('Error getting user profile:', error);
+    throw error;
+  }
+}
+
+// Update user name
+export async function updateName(firstName: string, lastName: string = ''): Promise<User> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/update-name/`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        first_name: firstName,
+        last_name: lastName
+      })
+    });
+
+    const result = await handleResponse<{ user: User }>(response);
+    return result.data.user;
+  } catch (error) {
+    console.error('Error updating name:', error);
     throw error;
   }
 }

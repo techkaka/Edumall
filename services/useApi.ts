@@ -526,6 +526,11 @@ export function useOrder(orderId: string) {
   );
 }
 
+// User reviews count hook
+export function useUserReviewsCount() {
+  return useApi(() => completeRealApi.getUserReviewsCount());
+}
+
 export function useOrderCreation() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -1,6 +1,7 @@
 import React, { Suspense, lazy, useCallback, useEffect } from 'react';
 import { RouterProvider, useRouter } from './components/Router';
 import { AuthProvider } from './components/auth/AuthContext';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { Toaster } from './components/ui/sonner';
@@ -167,7 +168,11 @@ const AppContent: React.FC = React.memo(() => {
         case 'search':
           return <SearchPage />;
         case 'wishlist':
-          return <WishlistPage />;
+          return (
+            <ProtectedRoute>
+              <WishlistPage />
+            </ProtectedRoute>
+          );
         case 'order-tracking':
           return <OrderTrackingPage />;
         default:

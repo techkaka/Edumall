@@ -33,6 +33,7 @@ export function Header() {
   const { currentPage } = useRouter();
   const { user, logout, isAuthenticated } = useAuth();
   const { cart, totalItems, refetch } = useCart();
+  const { wishlist, count: wishlistCount, refetch: refetchWishlist } = useWishlist();
   
   // Debug logging for header cart count (commented out for production)
   // console.log('🏷️ Header Cart Debug:', {
@@ -42,11 +43,11 @@ export function Header() {
   //   timestamp: new Date().toISOString()
   // });
 
-  // Force refresh cart data when component mounts
+  // Force refresh cart and wishlist data when component mounts
   useEffect(() => {
     refetch();
-  }, [refetch]);
-  const { wishlist } = useWishlist();
+    refetchWishlist();
+  }, [refetch, refetchWishlist]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState('');
   const [dropdownTimeout, setDropdownTimeout] = useState<NodeJS.Timeout | null>(null);
@@ -412,14 +413,18 @@ export function Header() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="hidden md:flex text-foreground hover:text-red-500 hover:bg-red-50/80 relative group font-medium"
+                  className="hidden md:flex text-foreground hover:text-primary hover:bg-primary/10 relative group font-medium"
                   onClick={handleWishlistClick}
                 >
                   <Heart className="h-5 w-5 group-hover:scale-110 transition-transform" />
                   <span className="hidden lg:inline ml-2">Wishlist</span>
-                  {wishlist && wishlist.length > 0 && (
-                    <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 text-xs bg-red-500 text-white rounded-full flex items-center justify-center">
-                      {wishlist.length}
+                  {wishlistCount > 0 && (
+                    <Badge 
+                      className="absolute -top-2 -right-2 h-6 min-w-[1.5rem] px-1 flex items-center justify-center text-xs bg-primary text-white rounded-full font-bold shadow-lg"
+                      title={`${wishlistCount} item${wishlistCount === 1 ? '' : 's'} in wishlist`}
+                      key={`wishlist-badge-${wishlistCount}`}
+                    >
+                      {wishlistCount > 99 ? '99+' : wishlistCount}
                     </Badge>
                   )}
                 </Button>
@@ -666,11 +671,11 @@ export function Header() {
                         setIsMenuOpen(false);
                       }}
                     >
-                      <Heart className="h-5 w-5 mr-3 text-red-500" />
+                      <Heart className="h-5 w-5 mr-3 text-primary" />
                       Wishlist
-                      {wishlist && wishlist.length > 0 && (
-                        <Badge className="ml-auto h-5 w-5 p-0 text-xs bg-red-500 text-white rounded-full flex items-center justify-center">
-                          {wishlist.length}
+                      {wishlistCount > 0 && (
+                        <Badge className="ml-auto h-6 min-w-[1.5rem] px-1 text-xs bg-primary text-white rounded-full flex items-center justify-center font-bold shadow-lg">
+                          {wishlistCount > 99 ? '99+' : wishlistCount}
                         </Badge>
                       )}
                     </Button>

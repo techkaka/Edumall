@@ -12,7 +12,7 @@ import { Textarea } from '../ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { useRouter, useNavigation } from '../Router';
 import { useAuth } from '../auth/AuthContext';
-import { useProduct, useCart } from '../../services/useApi';
+import { useProduct, useCart, useWishlist } from '../../services/useApi';
 
 export function ProductDetailPage() {
   const { params } = useRouter();
@@ -28,10 +28,12 @@ export function ProductDetailPage() {
   // Cart functionality
   const { addToCart, actionLoading } = useCart();
   
+  // Wishlist functionality
+  const { addToWishlist, removeFromWishlist, isInWishlist, actionLoading: wishlistActionLoading } = useWishlist();
+  
   // Local state
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState('description');
-  const [isWishlisted, setIsWishlisted] = useState(false);
   const [reviewText, setReviewText] = useState('');
   const [reviewRating, setReviewRating] = useState(5);
 
@@ -64,8 +66,29 @@ export function ProductDetailPage() {
   };
 
   // Handle add to wishlist
-  const handleAddToWishlist = () => {
-    setIsWishlisted(!isWishlisted);
+  const handleAddToWishlist = async () => {
+    if (!user) {
+      toast.error('Please login to add items to wishlist');
+      return;
+    }
+    
+    if (!product?.id) {
+      toast.error('No product ID available');
+      return;
+    }
+    
+    try {
+      if (isInWishlist(product.id)) {
+        await removeFromWishlist(product.id);
+        toast.success(`${product.title} removed from wishlist`);
+      } else {
+        await addToWishlist(product.id);
+        toast.success(`${product.title} added to wishlist`);
+      }
+    } catch (error) {
+      console.error('Failed to update wishlist:', error);
+      toast.error('Failed to update wishlist. Please try again.');
+    }
   };
 
   // Handle share
@@ -169,10 +192,11 @@ export function ProductDetailPage() {
                 variant="outline"
                 className="absolute top-4 right-4 w-10 h-10 p-0 bg-white/95 hover:bg-white border-primary/30 shadow-md"
                 onClick={handleAddToWishlist}
+                disabled={wishlistActionLoading === 'add' || wishlistActionLoading === 'remove'}
               >
                 <Heart 
                   className={`h-4 w-4 transition-colors ${
-                    isWishlisted 
+                    isInWishlist(product.id) 
                       ? 'text-red-500 fill-red-500' 
                       : 'text-primary hover:text-red-500'
                   }`} 

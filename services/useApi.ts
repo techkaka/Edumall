@@ -154,6 +154,14 @@ const notifyCartListeners = () => {
   globalCartListeners.forEach(listener => listener());
 };
 
+// Global wishlist state to ensure synchronization across components
+let globalWishlistState: WishlistItem[] = [];
+let globalWishlistListeners: Set<() => void> = new Set();
+
+const notifyWishlistListeners = () => {
+  globalWishlistListeners.forEach(listener => listener());
+};
+
 // Enhanced Cart hooks with full functionality
 export function useCart() {
   const [cart, setCart] = useState<CartItem[]>(globalCartState);
@@ -317,17 +325,36 @@ export function useCart() {
 
 // Enhanced Wishlist hooks with full functionality
 export function useWishlist() {
-  const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
+  const [wishlist, setWishlist] = useState<WishlistItem[]>(globalWishlistState);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Subscribe to global wishlist changes
+  useEffect(() => {
+    const listener = () => {
+      setWishlist([...globalWishlistState]);
+    };
+    globalWishlistListeners.add(listener);
+    
+    // Initialize with current global state if available
+    if (globalWishlistState.length > 0 && wishlist.length === 0) {
+      setWishlist([...globalWishlistState]);
+    }
+    
+    return () => {
+      globalWishlistListeners.delete(listener);
+    };
+  }, [wishlist.length]);
 
   const fetchWishlist = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const response = await completeRealApi.getWishlist();
+      globalWishlistState = response.data;
       setWishlist(response.data);
+      notifyWishlistListeners();
     } catch (err) {
       const errorMessage = err instanceof ApiError ? err.message : 'Failed to fetch wishlist';
       setError(errorMessage);
@@ -342,7 +369,9 @@ export function useWishlist() {
       setActionLoading('add');
       setError(null);
       const response = await completeRealApi.addToWishlist(productId);
+      globalWishlistState = response.data;
       setWishlist(response.data);
+      notifyWishlistListeners();
       return response;
     } catch (err) {
       const errorMessage = err instanceof ApiError ? err.message : 'Failed to add to wishlist';
@@ -358,7 +387,9 @@ export function useWishlist() {
       setActionLoading('remove');
       setError(null);
       const response = await completeRealApi.removeFromWishlist(productId);
+      globalWishlistState = response.data;
       setWishlist(response.data);
+      notifyWishlistListeners();
       return response;
     } catch (err) {
       const errorMessage = err instanceof ApiError ? err.message : 'Failed to remove from wishlist';

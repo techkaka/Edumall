@@ -14,13 +14,15 @@ import {
   Settings,
   Package,
   Gift,
-  X
+  X,
+  Trash2
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from './ui/hover-card';
 import { useNavigation, useRouter } from './Router';
 import { useAuth } from './auth/AuthContext';
 import { AuthDialog } from './auth/AuthDialog';
@@ -30,7 +32,20 @@ export function Header() {
   const navigation = useNavigation();
   const { currentPage } = useRouter();
   const { user, logout, isAuthenticated } = useAuth();
-  const { cart, totalItems } = useCart();
+  const { cart, totalItems, refetch } = useCart();
+  
+  // Debug logging for header cart count (commented out for production)
+  // console.log('🏷️ Header Cart Debug:', {
+  //   totalItems,
+  //   cartLength: cart.length,
+  //   cartItems: cart.map(item => ({ title: item.product.title, quantity: item.quantity })),
+  //   timestamp: new Date().toISOString()
+  // });
+
+  // Force refresh cart data when component mounts
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
   const { wishlist } = useWishlist();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState('');
@@ -410,20 +425,92 @@ export function Header() {
                 </Button>
 
                 {/* Cart - Ultra-Vibrant Aqua Theme */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-foreground hover:text-primary hover:bg-primary/10 relative group font-medium"
-                  onClick={handleCartClick}
-                >
-                  <ShoppingCart className="h-5 w-5 group-hover:scale-110 transition-transform" />
-                  <span className="hidden sm:inline ml-2">Cart</span>
-                  {totalItems > 0 && (
-                    <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs bg-primary text-white rounded-full">
-                      {totalItems}
-                    </Badge>
-                  )}
-                </Button>
+                <HoverCard>
+                  <HoverCardTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-foreground hover:text-primary hover:bg-primary/10 relative group font-medium"
+                      onClick={handleCartClick}
+                    >
+                      <ShoppingCart className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                      <span className="hidden sm:inline ml-2">Cart</span>
+                      {totalItems > 0 && (
+                        <Badge 
+                          className="absolute -top-2 -right-2 h-6 min-w-[1.5rem] px-1 flex items-center justify-center text-xs bg-primary text-white rounded-full font-bold shadow-lg"
+                          title={`${totalItems} item${totalItems === 1 ? '' : 's'} in cart${cart.length > 0 ? ` - ${cart.length} unique product${cart.length === 1 ? '' : 's'}` : ''}`}
+                          key={`cart-badge-${totalItems}`}
+                        >
+                          {totalItems > 99 ? '99+' : totalItems}
+                        </Badge>
+                      )}
+                    </Button>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-80 p-0" align="end">
+                    <div className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-semibold text-gray-900">Shopping Cart</h4>
+                        <span className="text-sm text-gray-600">
+                          {totalItems} item{totalItems === 1 ? '' : 's'}
+                        </span>
+                      </div>
+                      
+                      {cart.length === 0 ? (
+                        <div className="text-center py-6">
+                          <ShoppingCart className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                          <p className="text-gray-500 text-sm">Your cart is empty</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 max-h-64 overflow-y-auto">
+                          {cart.slice(0, 3).map((item) => (
+                            <div key={item.productId} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50">
+                              <div className="w-12 h-12 bg-gray-100 rounded-md flex-shrink-0">
+                                <img 
+                                  src={item.product.image} 
+                                  alt={item.product.title}
+                                  className="w-full h-full object-cover rounded-md"
+                                />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">
+                                  {item.product.title}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  Qty: {item.quantity} • ₹{item.product.price.toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                          {cart.length > 3 && (
+                            <div className="text-center py-2">
+                              <p className="text-xs text-gray-500">
+                                +{cart.length - 3} more item{cart.length - 3 === 1 ? '' : 's'}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {cart.length > 0 && (
+                        <div className="border-t pt-3 mt-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium">Total:</span>
+                            <span className="text-sm font-bold text-primary">
+                              ₹{cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0).toLocaleString()}
+                            </span>
+                          </div>
+                          <Button 
+                            size="sm" 
+                            className="w-full bg-primary hover:bg-primary/90"
+                            onClick={handleCartClick}
+                          >
+                            View Cart
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
 
                 {/* Account Section - Ultra-Vibrant Aqua Theme */}
                 {isAuthenticated && user ? (

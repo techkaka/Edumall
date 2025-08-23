@@ -146,19 +146,58 @@ export function usePriceRanges() {
   return useApi(() => completeRealApi.getPriceRanges());
 }
 
+// Global cart state to ensure synchronization across components
+let globalCartState: CartItem[] = [];
+let globalCartListeners: Set<() => void> = new Set();
+
+const notifyCartListeners = () => {
+  globalCartListeners.forEach(listener => listener());
+};
+
 // Enhanced Cart hooks with full functionality
 export function useCart() {
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<CartItem[]>(globalCartState);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Subscribe to global cart changes
+  useEffect(() => {
+    const listener = () => {
+      setCart([...globalCartState]);
+    };
+    globalCartListeners.add(listener);
+    
+    // Initialize with current global state if available
+    if (globalCartState.length > 0 && cart.length === 0) {
+      setCart([...globalCartState]);
+    }
+    
+    return () => {
+      globalCartListeners.delete(listener);
+    };
+  }, [cart.length]);
 
   const fetchCart = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const response = await completeRealApi.getCart();
+      globalCartState = response.data;
       setCart(response.data);
+      notifyCartListeners();
+      
+      // Debug logging (commented out for production)
+      // console.log('🛒 Cart Debug:', {
+      //   cartItems: response.data,
+      //   itemCount: response.data.length,
+      //   totalQuantity: response.data.reduce((sum, item) => sum + item.quantity, 0),
+      //   items: response.data.map(item => ({
+      //     productId: item.productId,
+      //     title: item.product.title,
+      //     quantity: item.quantity
+      //   }))
+      // });
     } catch (err) {
       const errorMessage = err instanceof ApiError ? err.message : 'Failed to fetch cart';
       setError(errorMessage);
@@ -173,7 +212,9 @@ export function useCart() {
       setActionLoading('add');
       setError(null);
       const response = await completeRealApi.addToCart(productId, quantity);
+      globalCartState = response.data;
       setCart(response.data);
+      notifyCartListeners();
       return response;
     } catch (err) {
       const errorMessage = err instanceof ApiError ? err.message : 'Failed to add to cart';
@@ -189,7 +230,9 @@ export function useCart() {
       setActionLoading('remove');
       setError(null);
       const response = await completeRealApi.removeFromCart(productId);
+      globalCartState = response.data;
       setCart(response.data);
+      notifyCartListeners();
       return response;
     } catch (err) {
       const errorMessage = err instanceof ApiError ? err.message : 'Failed to remove from cart';
@@ -205,7 +248,9 @@ export function useCart() {
       setActionLoading('update');
       setError(null);
       const response = await completeRealApi.updateCartQuantity(productId, quantity);
+      globalCartState = response.data;
       setCart(response.data);
+      notifyCartListeners();
       return response;
     } catch (err) {
       const errorMessage = err instanceof ApiError ? err.message : 'Failed to update quantity';
@@ -221,7 +266,9 @@ export function useCart() {
       setActionLoading('clear');
       setError(null);
       const response = await completeRealApi.clearCart();
+      globalCartState = response.data;
       setCart(response.data);
+      notifyCartListeners();
       return response;
     } catch (err) {
       const errorMessage = err instanceof ApiError ? err.message : 'Failed to clear cart';
@@ -240,6 +287,16 @@ export function useCart() {
   const totalPrice = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
   const totalOriginalPrice = cart.reduce((sum, item) => sum + (item.product.originalPrice * item.quantity), 0);
   const totalSavings = totalOriginalPrice - totalPrice;
+
+  // Debug logging for totalItems calculation (commented out for production)
+  // console.log('📊 Cart Totals Debug:', {
+  //   totalItems,
+  //   cartLength: cart.length,
+  //   cartItems: cart.map(item => ({ title: item.product.title, quantity: item.quantity })),
+  //   totalPrice,
+  //   totalOriginalPrice,
+  //   totalSavings
+  // });
 
   return {
     cart,

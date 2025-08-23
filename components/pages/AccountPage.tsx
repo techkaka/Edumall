@@ -6,7 +6,6 @@ import {
   Settings, 
   MapPin, 
   CreditCard, 
-  Gift, 
   Star, 
   Edit3, 
   Eye, 
@@ -26,122 +25,104 @@ import { Badge } from '../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Separator } from '../ui/separator';
-import { Progress } from '../ui/progress';
 import { useNavigation } from '../Router';
 import { useAuth } from '../auth/AuthContext';
 import { ProtectedRoute } from '../auth/ProtectedRoute';
+import { useCurrentUser, useOrders, useAddresses, useWishlist } from '../../services/useApi';
+import { Order, OrderItem, Address } from '../../services/types';
 
 function AuthenticatedAccountPage() {
   const navigation = useNavigation();
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isEditing, setIsEditing] = useState(false);
-  const [userProfile, setUserProfile] = useState({
-    name: user?.name || 'User',
-    email: user?.email || '',
-    phone: user?.mobile || '',
-    joinDate: user?.joinDate || 'January 2024',
+  
+  // Fetch real data from API
+  const { data: currentUser, loading: userLoading } = useCurrentUser();
+  const { data: orders, loading: ordersLoading } = useOrders();
+  const { data: addresses, loading: addressesLoading } = useAddresses();
+  const { wishlist, count: wishlistCount, loading: wishlistLoading } = useWishlist();
+  
+  // Use real user data or fallback to auth context user
+  const userProfile = {
+    name: currentUser?.name || user?.name || 'User',
+    email: currentUser?.email || user?.email || '',
+    phone: currentUser?.phone || user?.mobile || '',
+    joinDate: currentUser?.createdAt || 'January 2024',
     membershipTier: 'Gold'
-  });
-
-  const stats = [
-    { label: 'Total Orders', value: '24', icon: ShoppingBag, color: 'text-blue-600' },
-    { label: 'Wishlist Items', value: '12', icon: Heart, color: 'text-red-500' },
-    { label: 'Reward Points', value: '2,450', icon: Gift, color: 'text-green-600' },
-    { label: 'Reviews Written', value: '8', icon: Star, color: 'text-yellow-500' }
-  ];
-
-  const recentOrders = [
-    {
-      id: 'ORD-2024-001',
-      date: '2024-01-15',
-      status: 'Delivered',
-      items: 3,
-      total: 2499,
-      statusColor: 'text-green-600',
-      statusBg: 'bg-green-50',
-      books: ['NEET Complete Package', 'Physics Modules', 'Chemistry Guide']
-    },
-    {
-      id: 'ORD-2024-002',
-      date: '2024-01-10',
-      status: 'In Transit',
-      items: 2,
-      total: 1899,
-      statusColor: 'text-blue-600',
-      statusBg: 'bg-blue-50',
-      books: ['JEE Mathematics', 'Organic Chemistry']
-    },
-    {
-      id: 'ORD-2024-003',
-      date: '2024-01-05',
-      status: 'Processing',
-      items: 1,
-      total: 999,
-      statusColor: 'text-orange-600',
-      statusBg: 'bg-orange-50',
-      books: ['UPSC General Studies']
-    }
-  ];
-
-  const addresses = [
-    {
-      id: 1,
-      type: 'Home',
-      name: userProfile.name,
-      address: 'Flat 401, Green Valley Apartment, Sector 18, Noida',
-      city: 'Noida, UP - 201301',
-      phone: userProfile.phone,
-      isDefault: true
-    },
-    {
-      id: 2,
-      type: 'Office',
-      name: userProfile.name,
-      address: 'Office 205, Tech Park, DLF Phase 3',
-      city: 'Gurugram, HR - 122002',
-      phone: userProfile.phone,
-      isDefault: false
-    }
-  ];
-
-  const loyaltyProgram = {
-    currentTier: 'Gold',
-    currentPoints: 2450,
-    nextTier: 'Platinum',
-    pointsNeeded: 550,
-    progress: 82
   };
 
-  const wishlistItems = [
-    {
-      id: 1,
-      title: 'Advanced Organic Chemistry',
-      author: 'Dr. M.S. Chouhan',
-      price: 1299,
-      originalPrice: 1899,
-      image: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400',
-      availability: 'In Stock'
+  // Calculate real stats from API data
+  const stats = [
+    { 
+      label: 'Total Orders', 
+      value: orders?.length?.toString() || '0', 
+      icon: ShoppingBag, 
+      color: 'text-blue-600' 
     },
-    {
-      id: 2,
-      title: 'UPSC Mains Answer Writing',
-      author: 'Prof. K.K. Mishra',
-      price: 899,
-      originalPrice: 1299,
-      image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
-      availability: 'Limited Stock'
+    { 
+      label: 'Wishlist Items', 
+      value: wishlistCount?.toString() || '0', 
+      icon: Heart, 
+      color: 'text-red-500' 
+    },
+    { 
+      label: 'Reviews Written', 
+      value: '8', // This would come from a reviews API
+      icon: Star, 
+      color: 'text-yellow-500' 
     }
   ];
+
+  // Use real orders data or show empty state
+  const recentOrders = orders?.slice(0, 3).map((order: Order) => ({
+    id: order.id,
+    orderNumber: order.order_number || `#${order.id}`,
+    date: order.createdAt,
+    status: order.status,
+    items: order.items?.length || 0,
+    total: order.total,
+    statusColor: order.status === 'delivered' ? 'text-green-600' : 
+                 order.status === 'shipped' ? 'text-blue-600' : 'text-orange-600',
+    statusBg: order.status === 'delivered' ? 'bg-green-50' : 
+              order.status === 'shipped' ? 'bg-blue-50' : 'bg-orange-50',
+    books: order.items?.map((item: OrderItem) => item.title) || []
+  })) || [];
+
+  // Use real addresses data or show empty state
+  const userAddresses = addresses?.map((address: Address) => ({
+    id: Math.random(), // Backend doesn't provide ID, using random
+    type: 'Home', // Default type since backend doesn't provide it
+    name: address.fullName,
+    address: `${address.addressLine1}${address.addressLine2 ? `, ${address.addressLine2}` : ''}`,
+    city: `${address.city}, ${address.state} - ${address.pincode}`,
+    phone: address.phone,
+    isDefault: false // Backend doesn't provide default flag
+  })) || [];
+
+  // Use real wishlist data
+  const wishlistItems = wishlist?.map(item => ({
+    id: item.productId,
+    title: item.product.title,
+    author: item.product.author || 'Unknown Author',
+    price: item.product.price,
+    originalPrice: item.product.originalPrice || item.product.price,
+    image: item.product.image,
+    availability: 'In Stock' // This would come from inventory API
+  })) || [];
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'Delivered':
+      case 'delivered':
         return <CheckCircle className="h-4 w-4" />;
-      case 'In Transit':
+      case 'shipped':
         return <Truck className="h-4 w-4" />;
-      case 'Processing':
+      case 'processing':
         return <Package className="h-4 w-4" />;
+      case 'confirmed':
+        return <CheckCircle className="h-4 w-4" />;
+      case 'pending':
+        return <Clock className="h-4 w-4" />;
       default:
         return <Clock className="h-4 w-4" />;
     }
@@ -151,6 +132,18 @@ function AuthenticatedAccountPage() {
     if (!name) return 'U';
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
+
+  // Show loading state while data is being fetched
+  if (userLoading || ordersLoading || addressesLoading || wishlistLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your account...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -169,10 +162,10 @@ function AuthenticatedAccountPage() {
               <p className="text-blue-100 mb-4">Member since {userProfile.joinDate}</p>
               <div className="flex items-center space-x-4">
                 <Badge className="bg-yellow-500 text-yellow-900 hover:bg-yellow-400">
-                  {loyaltyProgram.currentTier} Member
+                  Gold Member
                 </Badge>
                 <span className="text-sm text-blue-100">
-                  {loyaltyProgram.pointsNeeded} points to {loyaltyProgram.nextTier}
+                  550 points to Platinum
                 </span>
               </div>
             </div>
@@ -188,7 +181,7 @@ function AuthenticatedAccountPage() {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {stats.map((stat, index) => (
             <Card key={index} className="hover:shadow-lg transition-shadow border-0 shadow-md">
               <CardContent className="p-6">
@@ -206,19 +199,18 @@ function AuthenticatedAccountPage() {
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 bg-white shadow-sm border">
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 bg-white shadow-sm border">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="orders">Orders</TabsTrigger>
             <TabsTrigger value="wishlist">Wishlist</TabsTrigger>
             <TabsTrigger value="addresses">Addresses</TabsTrigger>
-            <TabsTrigger value="rewards">Rewards</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
           {/* Dashboard Tab */}
           <TabsContent value="dashboard" className="space-y-6">
-            <div className="grid lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 space-y-6">
+            <div className="grid lg:grid-cols-2 gap-6">
+              <div className="space-y-6">
                 <Card className="shadow-lg border-0">
                   <CardHeader>
                     <CardTitle>Recent Orders</CardTitle>
@@ -233,7 +225,7 @@ function AuthenticatedAccountPage() {
                               {getStatusIcon(order.status)}
                             </div>
                             <div>
-                              <p className="font-semibold">{order.id}</p>
+                              <p className="font-semibold">{order.orderNumber}</p>
                               <p className="text-sm text-gray-600">{order.books.slice(0, 2).join(', ')}</p>
                               <p className="text-xs text-gray-500">{order.date}</p>
                             </div>
@@ -283,34 +275,6 @@ function AuthenticatedAccountPage() {
               <div className="space-y-6">
                 <Card className="shadow-lg border-0">
                   <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Gift className="h-5 w-5 mr-2 text-yellow-500" />
-                      Kaka Rewards
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center mb-4">
-                      <p className="text-3xl font-bold text-primary">{loyaltyProgram.currentPoints}</p>
-                      <p className="text-sm text-gray-600">Reward Points</p>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>{loyaltyProgram.currentTier}</span>
-                        <span>{loyaltyProgram.nextTier}</span>
-                      </div>
-                      <Progress value={loyaltyProgram.progress} className="h-2" />
-                      <p className="text-xs text-gray-600 text-center">
-                        {loyaltyProgram.pointsNeeded} points to {loyaltyProgram.nextTier}
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm" className="w-full mt-4" onClick={() => setActiveTab('rewards')}>
-                      View Rewards
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                <Card className="shadow-lg border-0">
-                  <CardHeader>
                     <CardTitle>Recent Wishlist</CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -348,56 +312,64 @@ function AuthenticatedAccountPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {recentOrders.map((order) => (
-                    <div key={order.id} className="p-6 border rounded-lg hover:shadow-md transition-shadow">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-4">
-                          <div className={`p-3 ${order.statusBg} rounded-full`}>
-                            {getStatusIcon(order.status)}
+                  {orders?.map((order: Order) => {
+                    const statusColor = order.status === 'delivered' ? 'text-green-600' : 
+                                       order.status === 'shipped' ? 'text-blue-600' : 'text-orange-600';
+                    const statusBg = order.status === 'delivered' ? 'bg-green-50' : 
+                                    order.status === 'shipped' ? 'bg-blue-50' : 'bg-orange-50';
+                    const orderNumber = order.order_number || `#${order.id}`;
+                    
+                    return (
+                      <div key={order.id} className="p-6 border rounded-lg hover:shadow-md transition-shadow">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center space-x-4">
+                            <div className={`p-3 ${statusBg} rounded-full`}>
+                              {getStatusIcon(order.status)}
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-lg">{orderNumber}</h3>
+                              <p className="text-sm text-gray-600">Ordered on {new Date(order.createdAt).toLocaleDateString()}</p>
+                            </div>
+                          </div>
+                          <Badge className={`${statusBg} ${statusColor} border-0`}>
+                            {order.status}
+                          </Badge>
+                        </div>
+                        
+                        <div className="grid md:grid-cols-3 gap-4 mb-4">
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">Items</p>
+                            <p className="text-sm text-gray-600">{order.items.length} books</p>
                           </div>
                           <div>
-                            <h3 className="font-semibold text-lg">{order.id}</h3>
-                            <p className="text-sm text-gray-600">Ordered on {order.date}</p>
+                            <p className="text-sm font-medium text-gray-900">Total Amount</p>
+                            <p className="text-sm text-gray-600">₹{order.total.toLocaleString()}</p>
+                          </div>
+                          <div className="flex space-x-2">
+                            <Button variant="outline" size="sm">
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Details
+                            </Button>
+                            <Button variant="outline" size="sm">
+                              <Download className="h-4 w-4 mr-2" />
+                              Invoice
+                            </Button>
                           </div>
                         </div>
-                        <Badge className={`${order.statusBg} ${order.statusColor} border-0`}>
-                          {order.status}
-                        </Badge>
-                      </div>
-                      
-                      <div className="grid md:grid-cols-3 gap-4 mb-4">
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">Items</p>
-                          <p className="text-sm text-gray-600">{order.items} books</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">Total Amount</p>
-                          <p className="text-sm text-gray-600">₹{order.total.toLocaleString()}</p>
-                        </div>
-                        <div className="flex space-x-2">
-                          <Button variant="outline" size="sm">
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Details
-                          </Button>
-                          <Button variant="outline" size="sm">
-                            <Download className="h-4 w-4 mr-2" />
-                            Invoice
-                          </Button>
-                        </div>
-                      </div>
 
-                      <div>
-                        <p className="text-sm font-medium mb-2">Books Ordered:</p>
-                        <div className="flex flex-wrap gap-1">
-                          {order.books.map((book, index) => (
-                            <Badge key={index} variant="secondary" className="text-xs">
-                              {book}
-                            </Badge>
-                          ))}
+                        <div>
+                          <p className="text-sm font-medium mb-2">Books Ordered:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {order.items.map((item: OrderItem, index: number) => (
+                              <Badge key={index} variant="secondary" className="text-xs">
+                                {item.title}
+                              </Badge>
+                            ))}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -466,7 +438,7 @@ function AuthenticatedAccountPage() {
               </CardHeader>
               <CardContent>
                 <div className="grid md:grid-cols-2 gap-6">
-                  {addresses.map((address) => (
+                  {userAddresses.map((address) => (
                     <div key={address.id} className="p-4 border rounded-lg">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center space-x-2">
@@ -492,54 +464,7 @@ function AuthenticatedAccountPage() {
             </Card>
           </TabsContent>
 
-          {/* Rewards Tab */}
-          <TabsContent value="rewards" className="space-y-6">
-            <Card className="shadow-lg border-0">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Gift className="h-5 w-5 mr-2 text-yellow-500" />
-                  Kaka Rewards Program
-                </CardTitle>
-                <CardDescription>Earn points on every purchase and unlock exclusive benefits</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="text-center p-6 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg border">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                    {loyaltyProgram.currentPoints} Points
-                  </h3>
-                  <p className="text-gray-600 mb-4">Current Balance</p>
-                  <div className="flex items-center justify-center space-x-4 mb-4">
-                    <Badge className="bg-yellow-500 text-yellow-900">
-                      {loyaltyProgram.currentTier} Member
-                    </Badge>
-                    <span className="text-sm text-gray-600">→</span>
-                    <Badge variant="outline">
-                      {loyaltyProgram.nextTier} ({loyaltyProgram.pointsNeeded} points needed)
-                    </Badge>
-                  </div>
-                  <Progress value={loyaltyProgram.progress} className="h-3 mb-2" />
-                  <p className="text-sm text-gray-600">
-                    {loyaltyProgram.progress}% to {loyaltyProgram.nextTier}
-                  </p>
-                </div>
 
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div className="p-4 border rounded-lg text-center">
-                    <h4 className="font-semibold mb-2">Earn Points</h4>
-                    <p className="text-sm text-gray-600">Get 1 point for every ₹10 spent</p>
-                  </div>
-                  <div className="p-4 border rounded-lg text-center">
-                    <h4 className="font-semibold mb-2">Redeem Rewards</h4>
-                    <p className="text-sm text-gray-600">100 points = ₹10 discount</p>
-                  </div>
-                  <div className="p-4 border rounded-lg text-center">
-                    <h4 className="font-semibold mb-2">Exclusive Access</h4>
-                    <p className="text-sm text-gray-600">Early sale access & special offers</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           {/* Settings Tab */}
           <TabsContent value="settings" className="space-y-6">

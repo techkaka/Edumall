@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Heart, ShoppingCart, Trash2, Eye, Grid3X3, List, Plus } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { Checkbox } from '../ui/checkbox';
@@ -107,13 +108,39 @@ export function WishlistPage() {
 
   const handleAddToCart = (itemId: number | number[]) => {
     const ids = Array.isArray(itemId) ? itemId : [itemId];
-    // Add to cart functionality
+    
+    // Find the items in wishlist
+    const items = wishlistItems.filter(item => ids.includes(item.id));
+    
+    if (items.length > 0) {
+      if (items.length === 1) {
+        toast.success(`${items[0].title} added to cart!`);
+      } else {
+        toast.success(`${items.length} items added to cart!`);
+      }
+    } else {
+      toast.error('Failed to add items to cart. Please try again.');
+    }
+    
     setSelectedItems([]);
   };
 
   const handleRemoveFromWishlist = (itemId: number | number[]) => {
     const ids = Array.isArray(itemId) ? itemId : [itemId];
-    // Remove from wishlist functionality
+    
+    // Find the items in wishlist
+    const items = wishlistItems.filter(item => ids.includes(item.id));
+    
+    if (items.length > 0) {
+      if (items.length === 1) {
+        toast.success(`${items[0].title} removed from wishlist`);
+      } else {
+        toast.success(`${items.length} items removed from wishlist`);
+      }
+    } else {
+      toast.error('Failed to remove items from wishlist. Please try again.');
+    }
+    
     setSelectedItems(prev => prev.filter(id => !ids.includes(id)));
   };
 
@@ -257,7 +284,7 @@ export function WishlistPage() {
                           <Button
                             size="sm"
                             variant="secondary"
-                            onClick={() => navigation.goToProductDetail({ id: item.id })}
+                            onClick={() => navigation.goToProductDetail(item.id.toString())}
                             className="bg-white/90 hover:bg-white shadow-sm border-primary/20 hover:border-primary/40"
                           >
                             <Eye className="h-4 w-4" />
@@ -337,7 +364,7 @@ export function WishlistPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => navigation.goToProductDetail({ id: item.id })}
+                              onClick={() => navigation.goToProductDetail(item.id.toString())}
                               className="ml-4 text-gray-500 hover:text-primary hover:bg-primary/10"
                             >
                               <Eye className="h-4 w-4" />

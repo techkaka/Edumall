@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   X
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -55,16 +56,21 @@ export function CartPage() {
     
     try {
       await updateQuantity(productId, newQuantity);
+      toast.success('Quantity updated successfully');
     } catch (err) {
-      // Error is handled by the cart hook
+      toast.error('Failed to update quantity. Please try again.');
     }
   };
 
   const handleRemoveItem = async (productId: number) => {
     try {
+      const item = cart.find(cartItem => cartItem.productId === productId);
       await removeFromCart(productId);
+      if (item) {
+        toast.success(`${item.product.title} removed from cart`);
+      }
     } catch (err) {
-      // Error is handled by the cart hook
+      toast.error('Failed to remove item from cart. Please try again.');
     }
   };
 
@@ -72,8 +78,9 @@ export function CartPage() {
     try {
       await addToWishlist(item.productId);
       await removeFromCart(item.productId);
+      toast.success(`${item.product.title} moved to wishlist`);
     } catch (err) {
-      // Error is handled by the respective hooks
+      toast.error('Failed to move item to wishlist. Please try again.');
     }
   };
 
@@ -86,15 +93,18 @@ export function CartPage() {
         setCouponDiscount(response.data.discount);
         setCouponMessage(response.data.message);
         setCouponApplied(true);
+        toast.success(response.data.message);
       } else {
         setCouponDiscount(0);
         setCouponMessage(response.data.message);
         setCouponApplied(false);
+        toast.error(response.data.message);
       }
     } catch (err) {
       setCouponDiscount(0);
       setCouponMessage('Failed to validate coupon');
       setCouponApplied(false);
+      toast.error('Failed to apply coupon. Please try again.');
     }
   };
 
@@ -103,14 +113,16 @@ export function CartPage() {
     setCouponDiscount(0);
     setCouponMessage('');
     setCouponApplied(false);
+    toast.info('Coupon removed.');
   };
 
   const handleClearCart = async () => {
     if (window.confirm('Are you sure you want to clear your cart?')) {
       try {
         await clearCart();
+        toast.success('Cart cleared successfully!');
       } catch (err) {
-        // Error is handled by the cart hook
+        toast.error('Failed to clear cart. Please try again.');
       }
     }
   };

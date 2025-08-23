@@ -16,6 +16,7 @@ import {
   Search,
   ArrowLeft
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -214,7 +215,13 @@ export function SearchPage() {
   };
 
   const handleAddToCart = (bookId: number) => {
-    // Add to cart functionality
+    // Find the book in search results
+    const book = searchResults.find(b => b.id === bookId);
+    if (book) {
+      toast.success(`${book.title} added to cart!`);
+    } else {
+      toast.error('Failed to add item to cart. Please try again.');
+    }
   };
 
   const handleAddToWishlist = (bookId: number) => {

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Heart, ShoppingCart, Zap, ArrowRight } from 'lucide-react';
+import { toast } from 'sonner';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { ImageWithFallback } from './figma/ImageWithFallback';
@@ -23,13 +24,13 @@ export function FeaturedProducts() {
       
       if (isInWishlist(product.id)) {
         await removeFromWishlist(product.id);
-        // Removed from wishlist
+        toast.success(`${product.title} removed from wishlist`);
       } else {
         await addToWishlist(product.id);
-        // Added to wishlist
+        toast.success(`${product.title} added to wishlist`);
       }
     } catch (err) {
-      // Wishlist action failed
+      toast.error('Failed to update wishlist. Please try again.');
     } finally {
       setActionLoading(prev => ({ ...prev, [actionKey]: false }));
     }
@@ -42,16 +43,16 @@ export function FeaturedProducts() {
     try {
       setActionLoading(prev => ({ ...prev, [actionKey]: true }));
       await addToCart(product.id, 1);
-      // Added to cart
+      toast.success(`${product.title} added to cart!`);
     } catch (err) {
-      // Add to cart failed
+      toast.error('Failed to add item to cart. Please try again.');
     } finally {
       setActionLoading(prev => ({ ...prev, [actionKey]: false }));
     }
   };
 
   const handleProductClick = (product: Product) => {
-    navigation.goToProductDetail(product.id);
+    navigation.goToProductDetail(product.id.toString());
   };
 
   const handleViewAllProducts = () => {

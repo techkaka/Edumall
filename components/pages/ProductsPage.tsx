@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Grid3X3, List, Star, Heart, ShoppingCart, SlidersHorizontal, Package, ChevronLeft, ChevronRight } from 'lucide-react';
+import { toast } from 'sonner';
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -9,8 +10,8 @@ import { Separator } from '../ui/separator';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { useRouter, useNavigation } from '../Router';
-import { useProducts, useProductCategories, useProductSubjects, useProductPublishers, usePriceRanges } from '../../services/useApi';
-import { SearchParams, Product, PriceRange } from '../../services/types';
+import { useProducts, useProductCategories, useProductSubjects, useProductPublishers, usePriceRanges, useCart, useWishlist } from '../../services/useApi';
+import { SearchParams, Product, PriceRange, FilterOptions } from '../../services/types';
 
 export function ProductsPage() {
   const { params } = useRouter();
@@ -30,7 +31,7 @@ export function ProductsPage() {
   // UI State
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
-  const [wishlist, setWishlist] = useState<number[]>([]);
+  const [actionLoading, setActionLoading] = useState<{ [key: string]: boolean }>({});
 
   // API Hooks
   const { data: products, loading, error, refetch, pagination } = useProducts(searchParams);
@@ -38,6 +39,8 @@ export function ProductsPage() {
   const { data: subjects } = useProductSubjects();
   const { data: publishers } = useProductPublishers();
   const { data: priceRanges } = usePriceRanges();
+  const { addToCart } = useCart();
+  const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
 
   // Update search params when URL params change
   useEffect(() => {
@@ -55,15 +58,43 @@ export function ProductsPage() {
   }, [params.category, params.type]);
 
   // Helper functions
-  const toggleWishlist = (productId: number) => {
-    setWishlist(prev => 
-      prev.includes(productId) 
-        ? prev.filter(id => id !== productId)
-        : [...prev, productId]
-    );
+  const handleWishlistToggle = async (product: Product, event: React.MouseEvent) => {
+    event.stopPropagation();
+    const actionKey = `wishlist-${product.id}`;
+    
+    try {
+      setActionLoading(prev => ({ ...prev, [actionKey]: true }));
+      
+      if (isInWishlist(product.id)) {
+        await removeFromWishlist(product.id);
+        toast.success(`${product.title} removed from wishlist`);
+      } else {
+        await addToWishlist(product.id);
+        toast.success(`${product.title} added to wishlist`);
+      }
+    } catch (err) {
+      toast.error('Failed to update wishlist. Please try again.');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [actionKey]: false }));
+    }
   };
 
-  const updateFilter = (key: keyof SearchParams['filters'], value: any) => {
+  const handleAddToCart = async (product: Product, event: React.MouseEvent) => {
+    event.stopPropagation();
+    const actionKey = `cart-${product.id}`;
+    
+    try {
+      setActionLoading(prev => ({ ...prev, [actionKey]: true }));
+      await addToCart(product.id, 1);
+      toast.success(`${product.title} added to cart!`);
+    } catch (err) {
+      toast.error('Failed to add item to cart. Please try again.');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [actionKey]: false }));
+    }
+  };
+
+  const updateFilter = (key: keyof FilterOptions, value: any) => {
     setSearchParams(prev => ({
       ...prev,
       page: 1, // Reset to first page when filters change
@@ -390,7 +421,7 @@ export function ProductsPage() {
                     className={`group hover:shadow-xl transition-all duration-300 border border-primary/20 shadow-md card-modern-bg cursor-pointer transform hover:scale-105 overflow-hidden ${
                       viewMode === 'list' ? 'flex flex-row' : ''
                     }`}
-                    onClick={() => goToProductDetail(product.id)}
+                    onClick={() => goToProductDetail(product.id.toString())}
                   >
                     <CardContent className={`p-0 ${viewMode === 'list' ? 'flex w-full' : ''}`}>
                       <div className={`relative overflow-hidden bg-gradient-to-br from-lightBg to-white ${
@@ -425,14 +456,12 @@ export function ProductsPage() {
                             size="sm"
                             variant="outline"
                             className="w-8 h-8 p-0 bg-white/95 hover:bg-white hover:scale-105 transition-all border-primary/30 shadow-md hover:border-primary/60"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleWishlist(product.id);
-                            }}
+                            onClick={(e) => handleWishlistToggle(product, e)}
+                            disabled={actionLoading[`wishlist-${product.id}`]}
                           >
                             <Heart 
                               className={`h-3 w-3 transition-colors ${
-                                wishlist.includes(product.id) 
+                                isInWishlist(product.id)
                                   ? 'text-red-500 fill-red-500' 
                                   : 'text-primary hover:text-red-500'
                               }`} 
@@ -469,13 +498,11 @@ export function ProductsPage() {
                         {/* Ultra-Vibrant Aqua Add to Cart Button */}
                         <Button 
                           className="w-full bg-gradient-to-r from-primary to-blue1 hover:from-blue1 hover:to-blue2 transition-all font-bold py-2 text-sm shadow-lg hover:shadow-xl transform hover:scale-105 text-white"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Add to cart functionality
-                          }}
+                          onClick={(e) => handleAddToCart(product, e)}
+                          disabled={actionLoading[`cart-${product.id}`]}
                         >
                           <ShoppingCart className="h-4 w-4 mr-2" />
-                          Add to Cart
+                          {actionLoading[`cart-${product.id}`] ? 'Adding...' : 'Add to Cart'}
                         </Button>
                       </div>
                     </CardContent>

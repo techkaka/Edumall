@@ -277,7 +277,8 @@ export function Header() {
     setActiveDropdown(newState);
   };
 
-  const getUserInitials = (name: string) => {
+  const getUserInitials = (name: string | undefined) => {
+    if (!name) return 'U';
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
@@ -430,13 +431,13 @@ export function Header() {
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm" className="flex items-center space-x-2 hover:bg-primary/10">
                         <Avatar className="h-9 w-9 border-2 border-primary/20">
-                          <AvatarImage src="" alt={user.name} />
+                          <AvatarImage src="" alt={user.name || 'User'} />
                           <AvatarFallback className="text-sm bg-gradient-to-br from-primary to-blue2 text-white font-bold">
                             {getUserInitials(user.name)}
                           </AvatarFallback>
                         </Avatar>
                         <span className="hidden sm:inline text-sm font-semibold text-foreground">
-                          {user.name.split(' ')[0]}
+                          {user.name?.split(' ')[0] || 'User'}
                         </span>
                         <ChevronDown className="h-3 w-3 text-muted-foreground" />
                       </Button>
@@ -444,8 +445,8 @@ export function Header() {
                     <DropdownMenuContent align="end" className="w-64 p-2">
                       <DropdownMenuLabel>
                         <div className="flex flex-col space-y-1">
-                          <p className="text-sm font-semibold text-foreground">{user.name}</p>
-                          <p className="text-xs text-muted-foreground">{user.mobile}</p>
+                          <p className="text-sm font-semibold text-foreground">{user.name || 'User'}</p>
+                          <p className="text-xs text-muted-foreground">{user.mobile || 'No mobile'}</p>
                         </div>
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />

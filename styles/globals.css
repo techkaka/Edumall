@@ -976,3 +976,108 @@
     opacity: 0.7;
   }
 }
+
+/* Toast Notification Styles - Fix z-index and backdrop issues */
+.toaster {
+  z-index: 99999 !important;
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  pointer-events: none !important;
+}
+
+.toaster > * {
+  pointer-events: auto !important;
+}
+
+/* Ensure toasts are always on top */
+[data-sonner-toaster] {
+  z-index: 99999 !important;
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  pointer-events: none !important;
+}
+
+[data-sonner-toaster] > * {
+  pointer-events: auto !important;
+}
+
+/* Toast backdrop and positioning */
+[data-sonner-toast] {
+  z-index: 99999 !important;
+  position: relative !important;
+  background: white !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 12px !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
+
+/* Success toast styling */
+[data-sonner-toast][data-type="success"] {
+  background: #f0fdf4 !important;
+  border-color: #bbf7d0 !important;
+  color: #166534 !important;
+}
+
+/* Error toast styling */
+[data-sonner-toast][data-type="error"] {
+  background: #fef2f2 !important;
+  border-color: #fecaca !important;
+  color: #dc2626 !important;
+}
+
+/* Warning toast styling */
+[data-sonner-toast][data-type="warning"] {
+  background: #fffbeb !important;
+  border-color: #fed7aa !important;
+  color: #d97706 !important;
+}
+
+/* Info toast styling */
+[data-sonner-toast][data-type="info"] {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  color: #2563eb !important;
+}
+
+/* Toast content styling */
+[data-sonner-toast] [data-description] {
+  font-weight: 500 !important;
+  line-height: 1.5 !important;
+}
+
+/* Toast close button */
+[data-sonner-toast] [data-close-button] {
+  background: transparent !important;
+  border: none !important;
+  color: inherit !important;
+  opacity: 0.7 !important;
+  transition: opacity 0.2s ease !important;
+}
+
+[data-sonner-toast] [data-close-button]:hover {
+  opacity: 1 !important;
+}
+
+/* Ensure toasts are not affected by background content */
+[data-sonner-toast] * {
+  z-index: inherit !important;
+}
+
+/* Mobile toast adjustments */
+@media (max-width: 768px) {
+  [data-sonner-toaster] {
+    top: 0 !important;
+    right: 0 !important;
+    left: 0 !important;
+    padding: 16px !important;
+  }
+  
+  [data-sonner-toast] {
+    max-width: 100% !important;
+    margin: 0 !important;
+  }
+}

@@ -196,7 +196,11 @@ const AppContent: React.FC = React.memo(() => {
       </main>
       
       <Footer />
-      <Toaster />
+      
+      {/* Toast notifications with proper z-index */}
+      <div className="fixed top-0 right-0 z-[99999] pointer-events-none">
+        <Toaster />
+      </div>
     </div>
   );
 });

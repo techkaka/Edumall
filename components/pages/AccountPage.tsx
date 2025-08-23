@@ -147,7 +147,8 @@ function AuthenticatedAccountPage() {
     }
   };
 
-  const getUserInitials = (name: string) => {
+  const getUserInitials = (name: string | undefined) => {
+    if (!name) return 'U';
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
